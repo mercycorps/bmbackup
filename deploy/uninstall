@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Add the sfdisk, mkfs.ext3, and fsck commands to the sudoers file
+#--------------------------------------------------------------------
+logger -p local6.notice -t installer "base - removing commands from sudoers file"
+
+sed '/^Cmnd_Alias.CC/s|, /sbin/fsck||' /etc/sudoers > /etc/sudoers.orig
+mv /etc/sudoers.orig /etc/sudoers
+chmod 440 /etc/sudoers
+
+rm -f /etc/cron.d/app-bmbackup
+rm -f /etc/clearos/bmbackup.d/email.conf
+rm -rf /etc/clearos/bmbackup.d/
