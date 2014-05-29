@@ -348,7 +348,7 @@ class Bmbackup extends Engine
         $devices = array();
 
         // Find SCSI devices that match: %d:%d:%d:%d
-        $entries = $this->_scan_dir(self::SCSI_DEVICES, '/^\d+:\d:\d:\d$/');
+        $entries = $this->_scan_directory(self::SCSI_DEVICES, '/^\d+:\d:\d:\d$/');
         clearos_log("bmbackup", "scanned dir: " . implode(" ", $entries));
         // Scan all SCSI devices.
         if ($entries !== FALSE) {
@@ -356,12 +356,12 @@ class Bmbackup extends Engine
                 $block = 'block';
                 $path = self::SCSI_DEVICES . "/$entry";
                 clearos_log("bmbackup", "path: $path");
-                if (($dev = $this->_scan_dir("$path/block", '/^dev$/')) !== FALSE) {
-                    if (($block_devices = $this->_scan_dir("$path", '/^block$/')) === FALSE) continue;
+                if (($dev = $this->_scan_directory("$path/block", '/^dev$/')) !== FALSE) {
+                    if (($block_devices = $this->_scan_directory("$path", '/^block$/')) === FALSE) continue;
                     $block = $block_devices[0];
-                    if (($devid = $this->_scan_dir("$path/$block", '/^sd\w/')) === FALSE) continue;
+                    if (($devid = $this->_scan_directory("$path/$block", '/^sd\w/')) === FALSE) continue;
                     $block .= "/$devid[0]";
-                    if (($dev = $this->_scan_dir("$path/$block", '/^dev$/')) === FALSE) continue;
+                    if (($dev = $this->_scan_directory("$path/$block", '/^dev$/')) === FALSE) continue;
                 }
                 if (count($dev) != 1) continue;
                 clearos_log("bmbackup", "count dev: " . count($dev));
@@ -422,7 +422,7 @@ class Bmbackup extends Engine
                 $devices[$key]['device'] = $nodes[$device['nodes']];
                 
                 // Here we are looking for detected partitions
-                if (($partitions = $this->_scan_dir($device['path'], '/^' . basename($nodes[$device['nodes']]) . '\d$/')) !== FALSE && count($partitions) > 0) {
+                if (($partitions = $this->_scan_directory($device['path'], '/^' . basename($nodes[$device['nodes']]) . '\d$/')) !== FALSE && count($partitions) > 0) {
                     foreach($partitions as $partition)
                     $devices[$key]['partition'][] = dirname($nodes[$device['nodes']]) . '/' . $partition;
                 }
@@ -457,29 +457,35 @@ class Bmbackup extends Engine
     }
 
     /**
-     * Scan a directory returning files that match the pattern.
+     * Scans a directory returning files that match the pattern.
      *
-     * @param string $dir     directory
-     * @param string $pattern pattern
+     * @param string $directory directory
+     * @param string $pattern   file pattern
      *
-     * @return array
+     * @access private
+     * @return array list of files
      */
 
-    final private function _scan_dir($dir, $pattern)
+    private function _scan_directory($directory, $pattern)
     {
-        if (!($dh = opendir($dir))) return FALSE;
+        if (!file_exists($directory) || !($dh = opendir($directory)))
+            return array();
 
         $matches = array();
+
         while (($file = readdir($dh)) !== FALSE) {
-            if (!preg_match($pattern, $file)) continue;
+            if (!preg_match($pattern, $file))
+                continue;
             $matches[] = $file;
         }
 
         closedir($dh);
         sort($matches);
-       
+
         return $matches;
     }
+    
+
 
     final private function _log_error($logmsg)
     {
