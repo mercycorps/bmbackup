@@ -42,7 +42,7 @@ class Bmbackup extends ClearOS_Controller
         $this->lang->load('bmbackup');
 
         // Load views
-        $views = array('bmbackup/archives', 'bmbackup/usb', 'bmbackup/schedule', 'bmbackup/email', 'bmbackup/logs');
+        $views = array('bmbackup/usb', 'bmbackup/schedule', 'bmbackup/email', 'bmbackup/logs');
         $this->page->view_forms($views, lang('bmbackup_app_name'));
 
         //$this->page->view_form('bmbackup', NULL, lang('bmbackup_app_name'));

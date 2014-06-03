@@ -9,7 +9,6 @@ class Usb extends ClearOS_Controller
         // --------------------
         $this->lang->load('bmbackup');
         $this->load->library('bmbackup/Bmbackup');
-        #$this->load->library('base/Engine_Exception');
 
         // Load view data
         // ----------------
@@ -36,14 +35,14 @@ class Usb extends ClearOS_Controller
         $this->page->view_confirm(lang('bmbackup_confirm_initialize') . "<b> $device </b>?", $confirm_uri, $cancel_uri);
     }
     
-    function initialize($dev) {
+    function initialize($dev) 
+    {
         $this->load->library('bmbackup/Bmbackup');
         
-        $initialized = $this->bmbackup->initialize_usb_disk($dev);
-        if ($initialized == true) {
-            redirect("/bmbackup");
-        } else {
-            clearos_log("bmbackup", "something went wrong");
+        try {
+            $this->bmbackup->initialize_usb_disk($dev);
+        } catch (Exception $e) {
+            $this->page->view_exception($e);
         }
     }
 }

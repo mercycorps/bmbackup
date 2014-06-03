@@ -25,7 +25,6 @@ use \clearos\apps\base\Engine as Engine;
 use \clearos\apps\base\File as File;
 use \clearos\apps\base\Folder as Folder;
 use \clearos\apps\base\Shell as Shell;
-//use \clearos\apps\base\Storage_Device as Device;
 use \clearos\apps\tasks\Cron as Cron;
 use \clearos\framework\Logger as Logger;
 use \clearos\apps\openldap\LDAP_Driver as LDAP_Driver;
@@ -35,7 +34,6 @@ clearos_load_library('base/Engine');
 clearos_load_library('base/File');
 clearos_load_library('base/Folder');
 clearos_load_library('base/Shell');
-//clearos_load_library('base/Storage_Device');
 clearos_load_library('tasks/Cron');
 clearos_load_library('framework/Logger');
 clearos_load_library('openldap/LDAP_Driver');
@@ -43,7 +41,6 @@ clearos_load_library('log_viewer/Log_Viewer');
 
 // Exceptions
 //-----------
-
 use \Exception as Exception;
 use \clearos\apps\base\Engine_Exception as Engine_Exception;
 use \clearos\apps\base\File_Not_Found_Exception as File_Not_Found_Exception;
@@ -64,7 +61,7 @@ class Bmbackup extends Engine
     ///////////////////////////////////////////////////////////////////////////////
 
     const INITIALIZED_FILE = '/mnt/backup/INITIALIZED';
-    const SCSI_DEVICES = '/sys/bus/scsi/devices';
+    const PATH_SCSI_DEVICES = '/sys/bus/scsi/devices';
     const PATH_USB_DEVICES = '/sys/bus/usb/devices';
     const USB_PARTITION_PATH = '/etc/clearos/bmbackup.d/usb.conf';
     const ETC_MTAB = '/etc/mtab';
@@ -80,6 +77,7 @@ class Bmbackup extends Engine
     const CMD_TAR = '/bin/tar';
     const CMD_PHP = '/usr/bin/php';
     
+    
     protected $mount_point = NULL;
     var $error_msg = array();
 
@@ -87,12 +85,19 @@ class Bmbackup extends Engine
     // M E T H O D S
     ///////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Scan the system and return an array of all attached USB devices
+     *
+     * @param None
+     * 
+     * @access public
+     * @return array of USB devices
+     */
     function get_detected_devices()
     {
         $devices = $this->_get_devices();
-        clearos_log("bmbackup", "Detected devices: " . implode(" ", $devices));
-        foreach ($devices as $device => $info)
-        {
+
+        foreach ($devices as $device => $info) {
             //if the bus is not usb, ignore it
             if ($info['bus'] !='usb') {
                 continue;
@@ -120,7 +125,7 @@ class Bmbackup extends Engine
                 
                 if (!$this->_is_mounted($dev)) {
                     try {
-                        $shell->execute('/bin/mount -t ext3', $dev . ' /mnt/backup', TRUE);
+                        $shell->execute('/bin/mount -t ext4', $dev . ' /mnt/backup', TRUE);
                     } catch (Exception $e) {
                         clearos_log("bmbackup", "Unable to mount $dev");
                     }
@@ -146,17 +151,26 @@ class Bmbackup extends Engine
         return $devices;
     }
 
+    /**
+     * Initializes a USB disk by partitioning it, formatting it, and touching a file.
+     *
+     * @param string $dev device name
+     * 
+     * @access private
+     * @return boolean
+     */
     function initialize_usb_disk($dev)
     {
-        clearos_log('bmbackup', 'initializing disk: ' . $dev);
         $device = '/dev/' . $dev;
 
+        // Quick check to make sure this is a properly formatted device name.
         if (preg_match('/\/dev\/sd\w\d/', $device)) {
             $device = substr_replace($device, '', -1); //Remove last char if $device is a partition.
         }
         
         $shell = new Shell;
 
+        //un-mount the device if it is already mounted.
         if ($this->_is_mounted($device)) {
             $shell->execute('/bin/umount', $device, TRUE);
         }
@@ -165,32 +179,34 @@ class Bmbackup extends Engine
         try {
             $shell->execute('/sbin/sfdisk', "-q -f $device < " . self::USB_PARTITION_PATH . ' > /tmp/out.log 2> /tmp/err.log', TRUE);
         } catch (Exception $e) {
-            throw new Engine_exception(clearos_exception_message($e), CLEAROS_ERROR);
+            throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }
         
-        $device = $device . '1'; // Make device into partition
+        // Make device into partition
+        $device = $device . '1'; 
 
-        // check to make sure that the disk can be formatted
+        // Format the disk
         try {
-            $shell->execute('/sbin/mkfs.ext3', $device, TRUE);
+            $shell->execute('/sbin/mkfs.ext4', $device, TRUE);
         } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_messsage($e), CLEAROS_ERROR);
+            throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }
 
+        // create the mount point if it does not already exists
         try {
             $shell->execute('/bin/mkdir', '-p /mnt/backup', TRUE);
         } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+            throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }
         
-        // make sure the disk mounts OK
+        // Mount the disk to verify everything went well.
         try {
             $shell->execute('/bin/mount', "$device /mnt/backup", TRUE);
         } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+            throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }
 
@@ -199,61 +215,78 @@ class Bmbackup extends Engine
         try {
             $shell->execute('/bin/touch', self::INITIALIZED_FILE, TRUE);
         } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+            throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }
         
-
         // unmount the disk when done doing all of the above
         try {
             $shell->execute('/bin/umount', $device, TRUE);
         } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+            throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }
         return true;
     }
 
+    /**
+     * Makes an entry in /etc/cron.d/ folder for bmbackup to run on a regular schedule
+     *
+     * @param integer $hour hour to have the cron job run
+     * 
+     * @access public
+     * @return None
+     */
     function update_cron_tab($hour)
     {
         $cron = new Cron;
 
-        if ($hour == 24)
-        {
+        if ($hour == 24) {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME))
                 $cron->delete_configlet(self::CRON_CONFIG_FILE_NAME);
-        } else 
-        {
-            if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME))
-            {
+        } else  {
+            if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $file = new File(self::CRON_FILE, TRUE);
                 $hr = $file->get_contents(-1);
                 $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root " . self::CRON_SCRIPT_PATH . "\n");
-            } else
-            {
+            } else {
                 $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', '*', 'root', self::CRON_SCRIPT_PATH);
             }
         }
     }
 
+    /**
+     * Updates the config settings for email notification
+     *
+     * @param integer $notification_level how many notifications would you like to receive
+     * @param string $email_address email address to receive notification
+     * 
+     * @access public
+     * @return None
+     */
     function update_email_notification_settings($notification_level, $email_address)
     {
         $file = new File(self::EMAIL_CONFIG_FILE, TRUE);
 
-        if ($file->exists() && $notification_level == self::NO_NOTIFICATIONS)
-        {
+        if ($file->exists() && $notification_level == self::NO_NOTIFICATIONS) {
             $file->delete();
-        } else if ($file->exists() && $notification_level !== self::NO_NOTIFICATIONS)
-        {
+        } else if ($file->exists() && $notification_level !== self::NO_NOTIFICATIONS) {
             $file->replace_one_line('/^[0-2]/', $notification_level . "\n");
             $file->replace_one_line('/.*\@/', $email_address);
-        } else
-        {
+        } else {
             $file->create('root', 'root', '644');
             $file->add_lines($notification_level . "\n" . $email_address);
         }
     }
 
+    /**
+     * Scans the folder at PATH_ARCHIVE and returns all the available archives
+     *
+     * @param string $path the path to scan for retrieving a list of archives
+     * 
+     * @access public
+     * @return array of archives
+     */
     function get_archives_list($path)
     {
         $archives = array();
@@ -273,8 +306,7 @@ class Bmbackup extends Engine
             return $archives;
         }
         
-        foreach ($contents as $value)
-        {
+        foreach ($contents as $value) {
             if (!preg_match('/tar.gz$/', $value)) {
                 continue;
             }
@@ -283,54 +315,39 @@ class Bmbackup extends Engine
         return array_reverse($archives);
     }
 
+    /**
+     * Restores a backup from the backup device
+     *
+     * @param string $filename the name of the archive to restore
+     * @param string $dev the name of the device to restore backup archive from.
+     * 
+     * @access public
+     * @return None
+     */
     function restore_backup($filename, $dev)
     {
         $shell = new Shell;
         $device = "/dev/$dev" . '1';
+        try {
+            $shell->execute('/bin/mount', "$device " . self::PATH_ARCHIVE, TRUE);
 
-        $shell->execute('/bin/mount', "$device " . self::PATH_ARCHIVE, TRUE);
+            if (preg_match('/^Configuration.*/', $filename)) {
+                $this->_restore_configuration(self::PATH_ARCHIVE, $filename);
+            } else if (preg_match('/^Home.*/', $filename)) {
+                $this->_restore_home(self::PATH_ARCHIVE, $filename);
+            } else if (preg_match('/^Flexshare.*/', $filename)) {
+                $this->_restore_flexshare(self::PATH_ARCHIVE, $filename);
+            }
 
-        if (preg_match('/^Configuration.*/', $filename)) {
-            $this->_restore_configuration(self::PATH_ARCHIVE, $filename);
-        } else if (preg_match('/^Home.*/', $filename)) {
-            $this->_restore_home(self::PATH_ARCHIVE, $filename);
-        } else if (preg_match('/^Flexshare.*/', $filename)) {
-            $this->_restore_flexshare(self::PATH_ARCHIVE, $filename);
+            $shell->execute('/bin/umount', $device, TRUE);
+        } catch (Exception $e) {
+            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
         }
-
-        $shell->execute('/bin/umount', $device, TRUE);
     }
-/*****
-    function backup_now()
-    {
-        $shell = new Shell;
 
-        $shell->execute(self::CMD_PHP, self::CRON_SCRIPT_PATH, TRUE);
-    }
-*****/
+
     function get_log_summary()
     {
-        /**
-        $system_log_file = new File('/var/log/system', TRUE);
-
-        $contents = $system_log_file->get_contents_as_array();
-
-        
-        $j = 0;
-
-        for ($i = 1; $i < $last_line; $i++)
-        {
-            $last_line--;
-            if (preg_match('/\bbmbackup\b/', $contents[$last_line]) && $j < 10)
-            {
-                if (preg_match('/\bsuccessful\b/', $contents[$last_line]) ||
-                preg_match('/bmbackup failed:/', $contents[$last_line]) ||
-                preg_match('/bmbackup warning:/', $contents[$last_line]))
-                {
-                    $j++;
-                }
-            }
-        }**/
         $system_log = new Log_Viewer;
 
         $contents = $system_log->get_log_entries('system', 'bmbackup');
@@ -343,57 +360,116 @@ class Bmbackup extends Engine
     // P R I V A T E   M E T H O D S
     /////////////////////////////////////////////////////////////////////////////// 
    
+   /**
+     * Scans the system returning USB storage devices that are attached to it.
+     * 
+     * @param None
+     * 
+     * @access private
+     * @return array list of detected device names
+     */
     final private function _get_devices()
     {
         $devices = array();
 
-        // Find SCSI devices that match: %d:%d:%d:%d
-        $entries = $this->_scan_directory(self::SCSI_DEVICES, '/^\d+:\d:\d:\d$/');
-        clearos_log("bmbackup", "scanned dir: " . implode(" ", $entries));
-        // Scan all SCSI devices.
-        if ($entries !== FALSE) {
-            foreach ($entries as $entry) {
-                $block = 'block';
-                $path = self::SCSI_DEVICES . "/$entry";
-                clearos_log("bmbackup", "path: $path");
-                if (($dev = $this->_scan_directory("$path/block", '/^dev$/')) !== FALSE) {
-                    if (($block_devices = $this->_scan_directory("$path", '/^block$/')) === FALSE) continue;
-                    $block = $block_devices[0];
-                    if (($devid = $this->_scan_directory("$path/$block", '/^sd\w/')) === FALSE) continue;
-                    $block .= "/$devid[0]";
-                    if (($dev = $this->_scan_directory("$path/$block", '/^dev$/')) === FALSE) continue;
-                }
-                if (count($dev) != 1) continue;
-                clearos_log("bmbackup", "count dev: " . count($dev));
-                // Validate SCSI storage device
-                if (!($fh = fopen("$path/$block/device/scsi_level", 'r'))) continue;
-                $scsi_level = chop(fgets($fh, 4096));
-                clearos_log("bambackup", "SCSI_LEVEL: " . $scsi_level);
-                fclose($fh);
-                if ($scsi_level != 3) continue;
-                $device['bus'] = 'usb';
+        // Find USB devices that match: %d-%d
+        $entries = $this->_scan_directory(self::PATH_USB_DEVICES, '/^\d-\d$/');
 
-                if (!($fh = fopen("$path/vendor", 'r'))) continue;
-                $device['vendor'] = chop(fgets($fh, 4096));
-                fclose($fh);
-                if (!($fh = fopen("$path/model", 'r'))) continue;
-                $device['model'] = chop(fgets($fh, 4096));
-                //$device['product'] = $device['model'];
-                fclose($fh);
-                if (!($fh = fopen("$path/$block/dev", 'r'))) continue;
-                $device['nodes'] = chop(fgets($fh, 4096));
-                fclose($fh);
-                $device['path'] = "$path/$block";
+        // Walk through the expected USB -> SCSI /sys paths.
+        foreach ($entries as $entry) {
+            
+            $path = self::PATH_USB_DEVICES . "/$entry";
 
-                $devices[] = $device;
+            $devid = $this->_scan_directory($path, "/^$entry:\d\.\d$/");
+            if (empty($devid))
+                continue;
+
+            if (count($devid) != 1)
+                continue;
+
+            $path .= '/' . $devid[0];
+
+            $host = $this->_scan_directory($path, '/^host\d+$/');
+            if (empty($host))
+                continue;
+
+            if (count($host) != 1)
+                continue;
+
+            $path .= '/' . $host[0];
+
+            $usb_storage = $path . "/scsi_host/" . $host[0];
+            
+            if (!($fh = fopen("$usb_storage/proc_name", 'r'))) {
+                clearos_log("bmbackup", "skipping because proc_name non-existent!");
+                continue;
             }
+                
+            //$proc_name = file_get_contents("$usb_storage/proc_name");
+            $proc_name = stream_get_contents($fh, -1);
+
+            if (trim($proc_name) <> "usb-storage") {
+                clearos_log("bmbackup", "skipping because proc_name NON EQUAL TO 'usb-storage': " . $proc_name);
+                continue;
+            }
+
+            $target = $this->_scan_directory($path, '/^target\d+:\d:\d$/');
+            if (empty($target))
+                continue;
+          
+            if (count($target) != 1)
+                continue;
+
+            $path .= '/' . $target[0];
+
+            $lun = $this->_scan_directory($path, '/^\d+:\d:\d:0$/');
+
+            if (empty($lun))
+                continue;
+
+            if (count($lun) != 1)
+                continue;
+
+            $path .= '/' . $lun[0];
+
+            $dev = $this->_scan_directory("$path/block", '/^s/');
+            if (empty($dev))
+                continue;
+
+            if (count($dev) != 1)
+                continue;
+
+            // Validate USB mass-storage device
+            if (!($fh = fopen("$path/vendor", 'r')))
+                continue;
+
+            $device['vendor'] = chop(fgets($fh, 4096));
+            fclose($fh);
+
+            if (!($fh = fopen("$path/model", 'r')))
+                continue;
+
+            $device['model'] = chop(fgets($fh, 4096));
+            fclose($fh);
+
+            if (!($fh = fopen("$path/block/". $dev[0] . "/dev", 'r'))) {
+                continue;
+            }
+
+            $device['nodes'] = chop(fgets($fh, 4096));
+            fclose($fh);
+            $device['path'] = $path;
+            $device['bus'] = 'usb';
+
+            // Valid device found (almost, continues below)...
+            $devices[] = $device;
         }
 
         if (count($devices)) {
             // Create a hashed array of all device nodes that match: /dev/s*
             // XXX: This can be fairly expensive, takes a few seconds to run.
-            if (!($ph = popen('stat -c 0x%t:0x%T:%n /dev/s*', 'r')))
-                throw new Exception("Error running stat command", CLEAROS_WARNING);
+            if (!($ph = popen('/usr/bin/stat -c 0x%t:0x%T:%n /dev/s*', 'r')))
+                throw new Engine_Exception("Error running stat command");
 
             $nodes = array();
             $major = '';
@@ -401,15 +477,20 @@ class Bmbackup extends Engine
 
             while (!feof($ph)) {
                 $buffer = chop(fgets($ph, 4096));
-                if (sscanf($buffer, '%x:%x:', $major, $minor) != 2) continue;
-                if ($major == 0) continue;
+
+                if (sscanf($buffer, '%x:%x:', $major, $minor) != 2)
+                    continue;
+
+                if ($major == 0)
+                    continue;
+
                 $nodes["$major:$minor"] = substr($buffer, strrpos($buffer, ':') + 1);
             }
 
             // Clean exit?
             if (pclose($ph) != 0)
-                throw new Exception("Error running stat command", CLEAROS_WARNING);
-            
+                throw new Engine_Exception("Error running stat command");
+
             // Hopefully we can now find the TRUE device name for each
             // storage device found above.  Validation continues...
             foreach ($devices as $key => $device) {
@@ -417,16 +498,19 @@ class Bmbackup extends Engine
                     unset($devices[$key]);
                     continue;
                 }
-               
+
                 // Set the block device
                 $devices[$key]['device'] = $nodes[$device['nodes']];
                 
+                $device_name = basename($nodes[$device['nodes']]);
+                
                 // Here we are looking for detected partitions
-                if (($partitions = $this->_scan_directory($device['path'], '/^' . basename($nodes[$device['nodes']]) . '\d$/')) !== FALSE && count($partitions) > 0) {
+                $partitions = $this->_scan_directory($device['path'] . "/block/" . $device_name, '/^' . $device_name . '\d$/');
+                if (! empty($partitions)) {
                     foreach($partitions as $partition)
-                    $devices[$key]['partition'][] = dirname($nodes[$device['nodes']]) . '/' . $partition;
+                        $devices[$key]['partition'][] = dirname($nodes[$device['nodes']]) . '/' . $partition;
                 }
-               
+
                 unset($devices[$key]['path']);
                 unset($devices[$key]['nodes']);
             }
@@ -435,6 +519,14 @@ class Bmbackup extends Engine
     }
 
 
+    /**
+     * Checks if a storage device is already mounted
+     * 
+     * @param string $device storage_device_name
+     * 
+     * @access private
+     * @return boolean value; true indicating device is mounted
+     */
     final private function _is_mounted($device)
     {
         if (!($fh = fopen(self::ETC_MTAB, 'r')))
@@ -485,12 +577,6 @@ class Bmbackup extends Engine
         return $matches;
     }
     
-
-
-    final private function _log_error($logmsg)
-    {
-        Logger::syslog('bmbackup', $logmsg);
-    }
 
     final private function _restore_configuration($path, $archive)
     {
