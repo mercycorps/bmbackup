@@ -1,4 +1,16 @@
 <?php
+
+/**
+ * Baremetal Backup And Restore controller.
+ *
+ * @category   Apps
+ * @package    baremetalbackup
+ * @subpackage views
+ * @author     Mahmood Khan <mkhan@mercycorps.org>
+ * @copyright  2014 Mercy Corps
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
+ */
+ 
 use \clearos\apps\bmbackup\Bmbackup as Bmbackup;
 
 class Usb extends ClearOS_Controller
@@ -41,6 +53,7 @@ class Usb extends ClearOS_Controller
         
         try {
             $this->bmbackup->initialize_usb_disk($dev);
+            redirect('bmbackup');
         } catch (Exception $e) {
             $this->page->view_exception($e);
         }

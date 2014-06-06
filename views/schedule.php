@@ -4,11 +4,11 @@
  * Baremetal Backup And Restore controller.
  *
  * @category   Apps
- * @package    Baremetal_Backup_And_Restore
- * @subpackage Controllers
- * @author     Your name <your@e-mail>
- * @copyright  2013 Your name / Company
- * @license    Your license
+ * @package    baremetalbackup
+ * @subpackage views
+ * @author     Mahmood Khan <mkhan@mercycorps.org>
+ * @copyright  2014 Mercy Corps
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  */
 
 ///////////////////////////////////////////////////////////////////////////////

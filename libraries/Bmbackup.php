@@ -1,4 +1,16 @@
 <?php
+
+/**
+ * Baremetal Backup And Restore controller.
+ *
+ * @category   Apps
+ * @package    baremetalbackup
+ * @subpackage views
+ * @author     Mahmood Khan <mkhan@mercycorps.org>
+ * @copyright  2014 Mercy Corps
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
+ */
+ 
 ///////////////////////////////////////////////////////////////////////////////
 // N A M E S P A C E
 ///////////////////////////////////////////////////////////////////////////////
@@ -327,9 +339,9 @@ class Bmbackup extends Engine
     function restore_backup($filename, $dev)
     {
         $shell = new Shell;
-        $device = "/dev/$dev" . '1';
+        $device = "/dev/" . $dev . "1";
         try {
-            $shell->execute('/bin/mount', "$device " . self::PATH_ARCHIVE, TRUE);
+            $shell->execute('/bin/mount', $device . " " . self::PATH_ARCHIVE, TRUE);
 
             if (preg_match('/^Configuration.*/', $filename)) {
                 $this->_restore_configuration(self::PATH_ARCHIVE, $filename);
@@ -344,17 +356,6 @@ class Bmbackup extends Engine
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
         }
     }
-
-
-    function get_log_summary()
-    {
-        $system_log = new Log_Viewer;
-
-        $contents = $system_log->get_log_entries('system', 'bmbackup');
-
-        return $contents;
-    }
-
 
     ///////////////////////////////////////////////////////////////////////////////
     // P R I V A T E   M E T H O D S
@@ -487,9 +488,9 @@ class Bmbackup extends Engine
                 $nodes["$major:$minor"] = substr($buffer, strrpos($buffer, ':') + 1);
             }
 
-            // Clean exit?
-            if (pclose($ph) != 0)
+            if (pclose($ph) != 0) {
                 throw new Engine_Exception("Error running stat command");
+            }
 
             // Hopefully we can now find the TRUE device name for each
             // storage device found above.  Validation continues...
@@ -557,7 +558,6 @@ class Bmbackup extends Engine
      * @access private
      * @return array list of files
      */
-
     private function _scan_directory($directory, $pattern)
     {
         if (!file_exists($directory) || !($dh = opendir($directory)))
@@ -578,28 +578,34 @@ class Bmbackup extends Engine
     }
     
 
+    /**
+     * Restores all of the conifugration files that are defined in the Bmbackup::PATH_ARCHIVE manifest file.
+     *
+     * @param string $path the path 
+     */
     final private function _restore_configuration($path, $archive)
     {
         $fullpath = "$path/$archive";
 
         $this->_verify_config_archive($fullpath);
         $file = new File($fullpath);
+        print("OK" . "\n". $fullpath);
 
         try {
             if (!$file->exists()) {
                 $shell->execute('/bin/umount', $path);
-                throw new File_Not_Found_Exception(CLEAROS_ERROR);
+                throw new File_Not_Found_Exception("The configuration backup file could not be found" . $fullpath, CLEAROS_ERROR);
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
         }
+        print("almost there \n");
 
         try {
             $shell = new Shell;
-            if ($shell->execute(self::CMD_TAR, "-C / -xpzf $fullpath", TRUE) != 0) 
-            {
+            if ($shell->execute(self::CMD_TAR, "-C / -xpzf $fullpath", TRUE) != 0) {
                 $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE);
-                throw new Engine_Exception($shell->get_first_output_line());
+                throw new Engine_Exception($shell->get_first_output_line(), CLEAROS_ERROR);
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
@@ -607,27 +613,33 @@ class Bmbackup extends Engine
 
         // Reload the LDAP database and reset LDAP-related daemons
         //--------------------------------------------------------
-
         if (clearos_library_installed('openldap/LDAP_Driver')) {
             clearos_load_library('openldap/LDAP_Driver');
-
             $openldap = new LDAP_Driver();
             $openldap->import();
         }
     }
 
+    /**
+     * Restores home directories using the homebackup tar file from the backup device
+     *
+     * @param string $path the path where the backup file is stored
+     * @param string $archive the name of the backup file to restore
+     */
     final private function _restore_home($path, $archive)
     {
         $shell = new Shell;
-        $fullpath = "$path/$archive";
+        $fullpath = $path . "/" . $archive;
         $file = new File($fullpath);
         try {
             if (! $file->exists()) {
                 $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE);
-                throw new File_Not_Found_Exception(CLEAROS_ERROR);
+                throw new File_Not_Found_Exception("The file, " . $fullpath . " does not exist", CLEAROS_ERROR);
+                return False;
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+            return False;
         }
         
         $folder = new Folder('/home');
@@ -635,26 +647,32 @@ class Bmbackup extends Engine
         
         try {
             if ($is_home_empty) {
-                $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE);
-//              $this->set_error('Restore Not Allowed: User Home Directories already exist.');
-            throw new Engine_Exception('Restore Not Allowed: User Home Directories already exist.', CLEAROS_ERROR);
-//            exit();
+                $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE); 
+                throw new Engine_Exception('Restore Not Allowed: User Home Directories already exist.', CLEAROS_ERROR);
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
         }
-
+        
         try {
-            if ($shell->execute(self::CMD_TAR, "-C / -xpzf $fullpath", TRUE))
-            {
+            if ($shell->execute(self::CMD_TAR, "-C / -xpzf " . $fullpath, TRUE)) {
                 $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE);
-                throw new Engine_Exception($shell->get_first_output_line());
+                throw new Engine_Exception("could not run the CMD_TAR command", CLEAROS_ERROR);
+                return False;
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+            return False;
         }
+        return True;
     }
 
+    /**
+     * Restores flexshare directories using the flexhsare tar file from the backup device
+     *
+     * @param string $path the path where the backup file is stored
+     * @param string $archive the name of the backup file to restore
+     */
     final private function _restore_flexshare($path, $archive)
     {
         $shell = new Shell;
@@ -664,7 +682,7 @@ class Bmbackup extends Engine
         try {
             if (!$file->exists()) {
                 $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE);
-                throw new File_Not_Found_Exception(CLEAROS_ERROR);
+                throw new File_Not_Found_Exception("Could not find the file, " . $fullpath, CLEAROS_ERROR);
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
@@ -683,10 +701,9 @@ class Bmbackup extends Engine
         }
 
         try {
-            if ($shell->execute(self::CMD_TAR, "-C / -xpzf $fullpath", TRUE))
-            {
+            if ($shell->execute(self::CMD_TAR, "-C / -xpzf $fullpath", TRUE)) {
                 $shell->execute('/bin/umount', self::PATH_ARCHIVE, TRUE);
-                throw new Engine_Exception($shell->get_first_output_line());
+                throw new Engine_Exception("Unable to untar the backup file, " . $fullpath, CLEAROS_ERROR);
             }
         } catch (Exception $e) {
             throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
@@ -702,8 +719,9 @@ class Bmbackup extends Engine
 
         $file = new File($fullpath);
 
-        if (!$file->exists())
-            throw new File_Not_Found_Exception($fullpath);
+        if (!$file->exists()) {
+            throw new File_Not_Found_Exception("Unable to find the file, " . $fullpath, CLEAROS_ERROR);
+        }
 
         // Check for /etc/release file (not stored in old versions)
         //---------------------------------------------------------
@@ -714,18 +732,17 @@ class Bmbackup extends Engine
 
         $release_found = FALSE;
 
-        foreach ($files as $file)
-        {
+        foreach ($files as $file) {
             if (preg_match("/ etc\/clearos-release$/", $file))
                 $release_found = TRUE;
         }
 
-        if (! $release_found)
+        if (! $release_found) {
             throw new Engine_Exception(lang('bmbackup_release_missing'), CLEAROS_ERROR);
-
+        }
+        
         // Check to see if release file matches
         //-------------------------------------
-
         $retval = $shell->execute(self::CMD_TAR, "-O -C /var/tmp -xzf $fullpath etc/clearos-release", TRUE);
 
         $archive_version = trim($shell->get_first_output_line());
@@ -733,10 +750,37 @@ class Bmbackup extends Engine
         $file = new File('/etc/clearos-release');
         $current_version = trim ($file->get_contents());
         
-        if ($current_version != $archive_version)
-        {
+        if ($current_version != $archive_version) {
             $err = lang('bmbackup_release_mismatch') . " ($archive_version)";
             throw new Engine_Exception($err, CLEAROS_ERROR);
         }
+    }
+    
+    /**
+     *
+     *
+     */
+    function get_log_summary()
+    {
+        /*
+        $system_log_file = new File('/var/log/system', TRUE);
+        $contents = $system_log_file->get_contents_as_array();
+        $j = 0;
+        for ($i = 1; $i < $last_line; $i++) {
+            $last_line--;
+            if (preg_match('/\bbmbackup\b/', $contents[$last_line]) && $j < 10) {
+                if (
+                    preg_match('/\bsuccessful\b/', $contents[$last_line]) || 
+                    preg_match('/bmbackup failed:/', $contents[$last_line]) || 
+                    preg_match('/bmbackup warning:/', $contents[$last_line])
+                ) {
+                    $j++;
+                }
+            }
+        }
+        */
+        $system_log = new Log_Viewer;
+        $contents = $system_log->get_log_entries('system', 'bmbackup');
+        return $contents;
     }
 }

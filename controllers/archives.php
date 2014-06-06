@@ -1,4 +1,15 @@
 <?php
+/**
+ * Baremetal Backup And Restore controller.
+ *
+ * @category   Apps
+ * @package    baremetalbackup
+ * @subpackage views
+ * @author     Mahmood Khan <mkhan@mercycorps.org>
+ * @copyright  2014 Mercy Corps
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
+ */
+ 
 use \clearos\apps\bmbackup\Bmbackup as Bmbackup;
 class Archives extends ClearOS_Controller
 {
@@ -18,7 +29,6 @@ class Archives extends ClearOS_Controller
             return;
         }
         
-        //$devices = $this->bmbackup->get_detected_devices();
         $data['archives'] = array();
         
         foreach ($devices as $device => $info) {
@@ -26,7 +36,7 @@ class Archives extends ClearOS_Controller
                 $data['archives'] = array($info['device'] => $info['archives']);
             }
         }
-
+        
         // Load views
         //-----------
 
@@ -36,10 +46,29 @@ class Archives extends ClearOS_Controller
     function restore($filename, $dev)
     {
         $this->lang->load('bmbackup');
-        $confirm_uri = "/app/bmbackup/archive_restore/$filename/$dev";
+        $confirm_uri = "/app/bmbackup/archives/archive_restore/" . $filename . "/" . $dev;
         $cancel_uri = '/app/bmbackup';
         $items = array($filename);
 
         $this->page->view_confirm(lang('bmbackup_confirm_restore') . '<br>' . $filename, $confirm_uri, $cancel_uri, $items);
+    }
+    
+    /**
+     * Calls the restore_backup function in the library to restore the specified file from device.
+     *
+     * @param string $filename the name of the fle to restore from the backup device.
+     * @param string $dev the name of the device to restore data from
+     *
+     */
+    function archive_restore($filename, $dev){
+        $this->load->library('bmbackup/Bmbackup');
+        
+        try {
+            $this->bmbackup->restore_backup($filename, $dev);
+            redirect('bmbackup');
+        } catch (Exception $e) {
+            $this->page->view_exception($e);
+            return;
+        }
     }
 }

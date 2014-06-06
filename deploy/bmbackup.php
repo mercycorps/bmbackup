@@ -1,6 +1,26 @@
 #!/usr/bin/php 
 <?php
+
+/**
+ * Baremetal Backup And Restore controller.
+ *
+ * @category   Apps
+ * @package    baremetalbackup
+ * @subpackage views
+ * @author     Mahmood Khan <mkhan@mercycorps.org>
+ * @copyright  2014 Mercy Corps
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
+ */
+ 
 namespace clearos\apps\bmbackup;
+
+///////////////////////////////////////////////////////////////////////////////
+// B O O T S T R A P
+///////////////////////////////////////////////////////////////////////////////
+
+$bootstrap = getenv('CLEAROS_BOOTSTRAP') ? getenv('CLEAROS_BOOTSTRAP') : '/usr/clearos/framework/shared';
+require_once $bootstrap . '/bootstrap.php';
+
 ///////////////////////////////////////////////////////////////////////////////
 // D E P E N D E N C I E S
 ///////////////////////////////////////////////////////////////////////////////
@@ -15,21 +35,17 @@ use \clearos\apps\network\Hostname as Hostname;
 use \clearos\framework\Logger as Logger;
 use \clearos\apps\openldap\LDAP_Driver as LDAP_Driver;
 use \clearos\apps\mail_notification\Mail_Notification as Mailer;
+use \clearos\apps\bmbackup\Bmbackup as Bmbackup;
 
-require_once('/usr/clearos/apps/base/libraries/Engine.php');
-require_once('/usr/clearos/apps/base/libraries/File.php');
-require_once('/usr/clearos/apps/base/libraries/Folder.php');
-require_once('/usr/clearos/apps/base/libraries/Shell.php');
-require_once('/usr/clearos/apps/network/libraries/Hostname.php');
-require_once('/usr/clearos/framework/shared/libraries/Logger.php');
-require_once('/usr/clearos/apps/openldap/libraries/LDAP_Driver.php');
-require_once('/usr/clearos/apps/mail_notification/libraries/Mail_Notification.php');
+clearos_load_library('bmbackup/Bmbackup');
 
 // External Libraries
 //-------------------
+/*
 include_once('/usr/clearos/sandbox/usr/share/pear/Swift/lib/Swift.php');
 include_once('/usr/clearos/sandbox/usr/share/pear/Swift/lib/Swift/File.php');
 include_once('/usr/clearos/sandbox/usr/share/pear/Swift/lib/Swift/Connection/SMTP.php');
+*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // C O N S T A N T S
@@ -44,49 +60,49 @@ const ERROR_NOTIFICATIONS = 2;
 const SERVICE = '/sbin/service'; 
 const ETC_MTAB = '/etc/mtab';
 const EMAIL_CONFIG_FILE = '/etc/clearos/bmbackup.d/email.conf';
-const FILE_CONFIG = '/usr/clearos/apps/bmbackup/deploy/backup.conf';
+// const FILE_CONFIG = '/usr/clearos/apps/bmbackup/deploy/backup.conf';
+const FILE_CONFIG = '/home/admin/apps/bmbackup/packaging/backup.conf';
 
 ///////////////////////////////////////////////////////////////////////////////
 // B A C K U P   S C R I P T
 ///////////////////////////////////////////////////////////////////////////////
 
+$bmbackup = new Bmbackup;
+
+// set the nofication level and the email that should receive email address.
 list($notification_level, $email_address) = get_email_notification_settings();
 
-if (!$storage_devices = get_devices()){
+// If there are no USB devices attached then exit since backup wouldn't be able to proceed
+if (!$storage_devices = $bmbackup->get_detected_devices()){
+    clearos_log("bmbackup", "bmbackup failed: No USB storage devices detected!");
     exit();
 }
 
-$i = count($storage_devices) -1;
+$i = count($storage_devices);
 $j = 0;
 
-while ($i >= 0) {
-    $storage_devices2[$j] = $storage_devices[$j]['partition'][0];
+$usb_disks = array();
+
+while ($i > 0) {
+    $usb_disks[$j] = $storage_devices[$j]['partition'][0];
     $i = $i - 1;
     $j = $j + 1;
 }
 
-if (!$usb_disks = get_usb($storage_devices2)) {
-    exit();
-}
-
 // loop through USB disks and perform a backup
-foreach ($usb_disks as $dev)
-{
+foreach ($usb_disks as $dev) {
     if (!check_usb($dev)) {
         continue;
     }
 
-    echo "Backup on : $dev started! \n";
-
     $shell = new Shell;
 
     // get the names of previous backups on the device
-    if (!$archives = get_backup_file_names(PATH_ARCHIVE)) {
-        _log_error('bmbackup warning: could not retrieve old backup file names');
+    if (!$archives = get_backup_file_names($bmbackup::PATH_ARCHIVE)) {
+        clearos_log("bmbackup", 'bmbackup warning: could not retrieve old backup file names');
     } else {
         // delete bad backup files, if any...
-        foreach ($archives as $archive) 
-        {
+        foreach ($archives as $archive) {
             $file = new File(PATH_ARCHIVE . '/' . $archive . 'BAD');
             if ($file->exists()) {
                 $file->delete();
@@ -94,7 +110,7 @@ foreach ($usb_disks as $dev)
                 $my_archive->delete();
             }
         }
-    } // end if get_backup_file_names
+    }
 
     $archives = get_backup_file_names(PATH_ARCHIVE);
 
@@ -113,6 +129,7 @@ foreach ($usb_disks as $dev)
     // prepare config backup
     if (! $config_manifest = config_backup()) {
         umount_usb($dev);
+        print("continuing over $dev since can't prepare backpu config \n");
         continue;
     }
 
@@ -123,14 +140,13 @@ foreach ($usb_disks as $dev)
     }
 
     // the old config backup should be deleted...
-    if (isset($config_backup_file_name))
-    {
+    if (isset($config_backup_file_name)) {
         $old_config_backup_file_name = new File (PATH_ARCHIVE . '/' . $config_backup_file_name);
         if ($old_config_backup_file_name->delete()) {
-            _log_error('bmbackup warning: the old config backup could not be deleted');
+            clearos_log("bmbackup", 'bmbackup warning: the old config backup could not be deleted');
         }
     }
-
+    
     // backup home directory
     if (! backup('Home_Directory_Backup', '/home/*')) {
         umount_usb($dev);
@@ -142,44 +158,51 @@ foreach ($usb_disks as $dev)
     {
         $old_home_backup_file_name = new File(PATH_ARCHIVE . '/' . $home_backup_file_name);
         if ($old_home_backup_file_name->delete()) {
-            _log_error('bmbackup warning: the old home backup could not be deleted');
+            clearos_log("bmbackup", 'bmbackup warning: the old home backup could not be deleted');
         }
     }
 
     // check to see if flexshares should be backed up...
-    $folder = new Folder('/var/flexshare/shares');
-    $are_files_available = $folder->get_listing();
+    if (file_exists('/var/flexshare/shares')) {
+        $folder = new Folder('/var/flexshare/shares');
+        $are_files_available = $folder->get_listing();
 
-    if ($are_files_available) {
-        //backup flexshare
-        if(! backup('Flexshare_Backup', '/var/flexshare')) {
-            umount_usb($dev);
-            continue;
+        if ($are_files_available) {
+            //backup flexshare
+            if(! backup('Flexshare_Backup', '/var/flexshare')) {
+                umount_usb($dev);
+                continue;
+            }
         }
-    }
-    
+
         // after successful flexshare backup, delete the old one
-    if (isset($flexshare_backup_file_name))
-    {
-        $old_flexshare_backup = new File(PATH_ARCHIVE . '/' . $flexshare_backup_file_name);
-        if ($old_flexshare_backup->delete()) {
-            _log_error('bmbackup warning: the old flexshare backup could not be deleted');
+        if (isset($flexshare_backup_file_name)) {
+            $old_flexshare_backup = new File(PATH_ARCHIVE . '/' . $flexshare_backup_file_name);
+            if ($old_flexshare_backup->delete()) {
+                clearos_log("bmbackup", 'bmbackup warning: the old flexshare backup could not be deleted');
+            }
         }
     }
     
-
     // unmount the usb disk after all backups are successful.
     if (!umount_usb($dev)) {
-        _log_error('bmbackup warning: failed to umount after successful backup');
+        clearos_log("bmbackup", 'bmbackup warning: failed to umount after successful backup');
     }
 
     // if everything goes well, then log a success message.
-    _log_error('bmbackup successful');
+    clearos_log("bmbackup", 'bmbackup successful');
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // M E T H O D S
 ///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Retrieves email notification settings from the config file.
+ *
+ * @access public
+ * @return array of the level of notification and email address
+ */
 function get_email_notification_settings()
 {
     $contents = array();
@@ -190,17 +213,23 @@ function get_email_notification_settings()
     return $contents = array(NO_NOTIFICATIONS, '');
 }
 
+/**
+ * Retrieves email notification settings from the config file.
+ *
+ * @access public
+ * @return array of the level of notification and email address
+ */
 function get_backup_file_names($path)
 {
     $archives = array();
     $folder = new Folder($path);
     if (! $folder) {
-        _log_error('could not get previous backup filenames');
+        clearos_log("bmbackup", 'could not get previous backup filenames');
         return null;
     }
     $contents = $folder->get_listing();
     if (!$contents) {
-        _log_error('could not get previous backup filenames');
+        clearos_log("bmbackup", 'could not get previous backup filenames');
         return null;
     }  
     foreach ($contents as $value) {
@@ -208,166 +237,44 @@ function get_backup_file_names($path)
             continue;
         }
         $archives[] = $value;
-        }
-        return $archives;
+    }
+    return $archives;
 }
 
-function get_devices()
-{
-    $devices = array();
-
-    // Find SCSI devices that match: %d:%d:%d:%d
-    $entries = _scan_dir(SCSI_DEVICES, '/^\d+:\d:\d:\d$/');
-
-    // Scan all SCSI devices.
-    if ($entries !== FALSE) {
-        foreach ($entries as $entry) {
-            $block = 'block';
-            $path = SCSI_DEVICES . "/$entry";
-            if (($dev = _scan_dir("$path/block", '/^dev$/')) !== FALSE) {
-                if (($block_devices = _scan_dir("$path", '/^block$/')) === FALSE) continue;
-                $block = $block_devices[0];
-                if (($devid = _scan_dir("$path/$block", '/^sd\w/')) === FALSE) continue;
-                $block .= "/$devid[0]";
-                if (($dev = _scan_dir("$path/$block", '/^dev$/')) === FALSE) continue;
-            }
-            if (count($dev) != 1) continue;
-
-            // Validate SCSI storage device
-            if (!($fh = fopen("$path/$block/device/scsi_level", 'r'))) continue;
-            $scsi_level = chop(fgets($fh, 4096));
-            fclose($fh);
-            if ($scsi_level != 3) continue;
-            $device['bus'] = 'usb';
-
-            if (!($fh = fopen("$path/vendor", 'r'))) continue;
-            $device['vendor'] = chop(fgets($fh, 4096));
-            fclose($fh);
-            if (!($fh = fopen("$path/model", 'r'))) continue;
-            $device['model'] = chop(fgets($fh, 4096));
-            //$device['product'] = $device['model'];
-            fclose($fh);
-            if (!($fh = fopen("$path/$block/dev", 'r'))) continue;
-            $device['nodes'] = chop(fgets($fh, 4096));
-            fclose($fh);
-            $device['path'] = "$path/$block";
-
-            $devices[] = $device;
-        }
-    }
-
-    if (count($devices)) {
-        // Create a hashed array of all device nodes that match: /dev/s*
-        // XXX: This can be fairly expensive, takes a few seconds to run.
-        if (!($ph = popen('stat -c 0x%t:0x%T:%n /dev/s*', 'r')))
-            throw new Exception("Error running stat command", CLEAROS_WARNING);
-
-        $nodes = array();
-        $major = '';
-        $minor = '';
-
-        while (!feof($ph)) {
-            $buffer = chop(fgets($ph, 4096));
-            if (sscanf($buffer, '%x:%x:', $major, $minor) != 2) continue;
-            if ($major == 0) continue;
-            $nodes["$major:$minor"] = substr($buffer, strrpos($buffer, ':') + 1);
-        }
-
-        // Clean exit?
-        if (pclose($ph) != 0)
-            throw new Exception("Error running stat command", CLEAROS_WARNING);
-            
-        // Hopefully we can now find the TRUE device name for each
-        // storage device found above.  Validation continues...
-        foreach ($devices as $key => $device) {
-            if (!isset($nodes[$device['nodes']])) {
-                unset($devices[$key]);
-                continue;
-            }
-               
-            // Set the block device
-            $devices[$key]['device'] = $nodes[$device['nodes']];
-                
-            // Here we are looking for detected partitions
-            if (($partitions = _scan_dir($device['path'], '/^' . basename($nodes[$device['nodes']]) . '\d$/')) !== FALSE && count($partitions) > 0) {
-                foreach($partitions as $partition)
-                $devices[$key]['partition'][] = dirname($nodes[$device['nodes']]) . '/' . $partition;
-            }
-               
-            unset($devices[$key]['path']);
-            unset($devices[$key]['nodes']);
-        }
-    }
-    return $devices;
-}
-
-function get_usb($storage_devices)
-{
-    $usb_disks = array();
-    $i = 0;
-    foreach ($storage_devices as $device)
-    {
-        if (preg_match('/\/dev\/scd\d/', $device) || preg_match('/\/dev\/hd\w\d/', $device))
-        {
-            continue;
-        }
-        $usb_disks[$i++] = $device;
-    }
-    return $usb_disks;
-}
-
+/**
+ * Checks the USB disk to ensre it is mountable and passes file-system CHECK
+ *
+ * @param string $dev the usb device name
+ * @return boolean value 
+ */
 function check_usb($dev)
 {
     $shell = new Shell;
     
     // unmount the device if it is mounted
-    if (_is_mounted($dev))
+    if (_is_mounted($dev)) {
         $shell->execute('/bin/umount', $dev, true);
-
+    }
+    
     // Perform file system check on the backup device
-    if ($shell->execute('/sbin/fsck', "-f -y $dev", true))
-    {
-        $output = $shell->get_output();
-        $error_message = '';
-        foreach ($output as $line)
-        {
-            $error_message .= $line;
-        }
-        echo $error_message;
-        _log_error("bmbackup failed: $error_message");
-        return FALSE;
+    if ($shell->execute('/sbin/fsck', "-f -y $dev", true)) {
+        clearos_log("bmbackup", "Unable run file-system-check on  $dev");
+        return false;
     }
 
-    // mount the backup device.
-    if ($shell->execute('/bin/mount -t ext3', "$dev /mnt/backup", true))
-    {
-        $output = $shell->get_output();
-        $error_message = '';
-        foreach ($output as $line)
-        {
-            $error_message .= $line;
-        }
-        _log_error("bmbackup failed: $error_message");
-        $shell->execute('/bin/umount', '/mnt/backup', true);
-        return FALSE;
+    if ($shell->execute('/bin/mount -t ext4', "$dev /mnt/backup", true)) {
+        clearos_log("bmbackup", "Unable to mount $dev");
+        return false;
     }
 
     // verify that the backup disk is initialized
     $file = new File(INITIALIZED_FILE);
-
-    if (!$file->exists())
-    {
-        $output = $shell->get_output();
-        $error_message = '';
-        foreach ($output as $line)
-        {
-            $error_message .= $line;
-        }
-        _log_error("bmbackup failed: <b> $dev </b> not initialized $error_message");
+    if (!$file->exists()) {
+        clearos_log("bmbackup", "bmbackup failed: <b> $dev </b> not initialized $error_message");
         umount_usb($dev);
-        return FALSE;
+        return false;
     }
-    return TRUE;
+    return true;
 }
  
 function config_backup()
@@ -376,7 +283,7 @@ function config_backup()
 
     //backup configuration files
     if (! $config_manifest = _read_config()) {
-        _log_error('bmbackup failed: could not read configuration files');
+        clearos_log("bmbackup", 'bmbackup failed: could not read configuration files');
         return null;
     }
     // Dump the current LDAP database
@@ -386,56 +293,65 @@ function config_backup()
         $openldap = new LDAP_Driver();
         $openldap->export();
     } else {
-        _log_error('bmbackup failed: could not dump ldap to backup');
+        clearos_log("bmbackup", 'bmbackup failed: could not dump ldap to backup');
         return null;
     }
     return $config_manifest;
 }
 
+/**
+ * Un-mounts the USB storage device passed in as argument.
+ *
+ * @param string $dev the name of the USB storage device
+ * @return boolean depending on whether the unmount operation was successful
+ */
 function umount_usb($dev)
 {
     $shell = new Shell;
-    if ($shell->execute('/bin/umount', $dev, true))
-    {
-        $output = $shell->get_output();
-        $error_message = '';
-        foreach ($output as $line)
-        {
-            $error_message .= $line;
-        }
-        _log_error("bmbackup failed: $error_message");
+    if ($shell->execute('/bin/umount', $dev, true)) {
+        clearos_log("bmbackup", "bmbackup failed: unable to umount the usb disk: " . $dev);
         return FALSE;
     }
     return TRUE;
 }
 
+/**
+ * Reads all of the config files which are in the manifest file (FILE_CONFIG)
+ *
+ * @return array of all the files that it read based on the FILE_CONFIG manifest.
+ */
 function _read_config()
 {
     $files = array();
-
+    if (!file_exists(FILE_CONFIG)) {
+        return null;
+    }
     $config = new File(FILE_CONFIG);
-
     $contents = $config->get_contents_as_array();
 
-    foreach ($contents as $line)
-    {
-        if (preg_match('/^\s*#/', $line))
+    foreach ($contents as $line) {
+        if (preg_match('/^\s*#/', $line)) {
             continue;
-
+        }
         $files[] = $line;
     }
     
     $files_manifest = '';
-    foreach ($files as $file)
-    {
+    
+    foreach ($files as $file) {
         $files_manifest .= "$file ";
     }
-
-    $files_manifest = rtrim($files_manifest);
     
+    $files_manifest = rtrim($files_manifest);
     return $files_manifest;
 }
 
+/**
+ * Check if a device is already mounted.
+ *
+ * @param string $device the name of the device to check
+ * @return boolean depending on whether the unmount operation was successful
+ */
 function _is_mounted($device)
 {
     $mount_point = NULL;
@@ -466,15 +382,14 @@ function _is_mounted($device)
  *
  * @return array
  */
-
 function _scan_dir($dir, $pattern)
 {
     if (!($dh = opendir($dir))) return FALSE;
     $matches = array();
-    while (($file = readdir($dh)) !== FALSE) 
-    {
-        if (!preg_match($pattern, $file)) 
+    while (($file = readdir($dh)) !== FALSE) {
+        if (!preg_match($pattern, $file)) {
             continue;
+        }
         $matches[] = $file;
     }
     closedir($dh);
@@ -482,6 +397,14 @@ function _scan_dir($dir, $pattern)
     return $matches;
 }
 
+/**
+ * Performs a backup of either configuration, home, or flexshare dirctories.
+ *
+ * @param string $backup_type the type of backup, i.e., config, home, or flexshare
+ * @param string $files_manifest arry of files to backup in case of config backup
+ * 
+ * 
+ */
 function backup($backup_type, $files_manifest)
 {
     $shell = new Shell;
@@ -503,29 +426,12 @@ function backup($backup_type, $files_manifest)
     $shell->execute('/bin/tar', $attr . $args, true);
     $archive = new file(PATH_ARCHIVE . '/' . $filename);
     if (!$archive) {
-        _log_error('bmbackup failed: the tar file does not exist: ' . PATH_ARCHIVE . ' ' . $archive);
+        clearos_log("bmbackup", 'bmbackup failed: the tar file does not exist: ' . PATH_ARCHIVE . ' ' . $archive);
         return false;
     }
 
     $archive->chmod(600);
-
     return true;
-}
-function _log_error($logmsg)
-{
-    global $notification_level;
-
-    Logger::syslog('bmbackup', $logmsg);
-
-    if ($notification_level == NO_NOTIFICATIONS) {
-        return;
-    } else if ($notification_level = ALL_NOTIFICATIONS) {
-        _send($logmsg);
-    } else {
-        if (preg_match('/bmbackup failed:/', $logmsg) || preg_match('/bmbackup warning:/', $logmsg)) {
-            _send($logmsg);
-        }
-    }
 }
 
 function _send($email_body)
