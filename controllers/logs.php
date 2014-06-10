@@ -20,7 +20,6 @@ class Logs extends ClearOS_Controller
         //------------------
         $this->lang->load('bmbackup');
         $this->load->library('bmbackup/Bmbackup');
-//        $this->load->library('base/File');
          
         // Load views
         //-----------

@@ -10,7 +10,10 @@
  * @copyright  2014 Mercy Corps
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  */
-
+ 
+///////////////////////////////////////////////////////////////////////////////
+// C L A S S
+///////////////////////////////////////////////////////////////////////////////
 class Bmbackup extends ClearOS_Controller
 {
     /**
@@ -29,7 +32,5 @@ class Bmbackup extends ClearOS_Controller
         // Load views
         $views = array('bmbackup/archives', 'bmbackup/usb', 'bmbackup/schedule', 'bmbackup/email', 'bmbackup/logs');
         $this->page->view_forms($views, lang('bmbackup_app_name'));
-
-        //$this->page->view_form('bmbackup', NULL, lang('bmbackup_app_name'));
     }
 }
