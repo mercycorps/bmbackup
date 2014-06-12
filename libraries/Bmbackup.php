@@ -191,6 +191,7 @@ class Bmbackup extends Engine
         try {
             $shell->execute('/sbin/sfdisk', "-q -f $device < " . self::USB_PARTITION_PATH . ' > /tmp/out.log 2> /tmp/err.log', TRUE);
         } catch (Exception $e) {
+            clearos_log("bmbackup", $e);
             throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
             return false;
         }

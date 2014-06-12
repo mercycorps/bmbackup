@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Add the sfdisk, mkfs.ext3, and fsck commands to the sudoers file
+
+# Sudoers
+#--------
+
+/usr/sbin/addsudo /bin/mount app-bmbackup-core
+/usr/sbin/addsudo /bin/umount app-bmbackup-core
+/usr/sbin/addsudo /sbin/sfdisk app-bmbackup-core
+/usr/sbin/addsudo /sbin/fsck app-bmbackup-core
+/usr/sbin/addsudo /sbin/mkfs.ext4 app-bmbackup-core
+
