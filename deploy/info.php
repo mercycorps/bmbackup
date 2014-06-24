@@ -19,7 +19,7 @@ $app['description'] = lang('bmbackup_app_description');
 
 $app['name'] = lang('bmbackup_app_name');
 $app['category'] = lang('base_category_system');
-$app['subcategory'] = 'Developer'; // e.g. lang('base_subcategory_settings');
+$app['subcategory'] = lang('base_subcategory_backup');
 
 /////////////////////////////////////////////////////////////////////////////
 // Packaging
