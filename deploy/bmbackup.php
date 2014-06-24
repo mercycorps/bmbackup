@@ -39,14 +39,6 @@ use \clearos\apps\bmbackup\Bmbackup as Bmbackup;
 
 clearos_load_library('bmbackup/Bmbackup');
 
-// External Libraries
-//-------------------
-/*
-include_once('/usr/clearos/sandbox/usr/share/pear/Swift/lib/Swift.php');
-include_once('/usr/clearos/sandbox/usr/share/pear/Swift/lib/Swift/File.php');
-include_once('/usr/clearos/sandbox/usr/share/pear/Swift/lib/Swift/Connection/SMTP.php');
-*/
-
 ///////////////////////////////////////////////////////////////////////////////
 // C O N S T A N T S
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,8 +52,8 @@ const ERROR_NOTIFICATIONS = 2;
 const SERVICE = '/sbin/service'; 
 const ETC_MTAB = '/etc/mtab';
 const EMAIL_CONFIG_FILE = '/etc/clearos/bmbackup.d/email.conf';
-// const FILE_CONFIG = '/usr/clearos/apps/bmbackup/deploy/backup.conf';
-const FILE_CONFIG = '/home/admin/apps/bmbackup/packaging/backup.conf';
+const FILE_CONFIG = '/etc/clearos/bmbackup.d/backup.conf';
+// const FILE_CONFIG = '/home/admin/apps/bmbackup/packaging/backup.conf';
 
 ///////////////////////////////////////////////////////////////////////////////
 // B A C K U P   S C R I P T
@@ -74,7 +66,7 @@ list($notification_level, $email_address) = get_email_notification_settings();
 
 // If there are no USB devices attached then exit since backup wouldn't be able to proceed
 if (!$storage_devices = $bmbackup->get_detected_devices()){
-    clearos_log("bmbackup", "bmbackup failed: No USB storage devices detected!");
+    log_error("bmbackup failed: No USB storage devices detected!");
     exit();
 }
 
@@ -99,7 +91,7 @@ foreach ($usb_disks as $dev) {
 
     // get the names of previous backups on the device
     if (!$archives = get_backup_file_names($bmbackup::PATH_ARCHIVE)) {
-        clearos_log("bmbackup", 'bmbackup warning: could not retrieve old backup file names');
+        log_error("bmbackup warning: could not retrieve old backup file names");
     } else {
         // delete bad backup files, if any...
         foreach ($archives as $archive) {
@@ -129,7 +121,7 @@ foreach ($usb_disks as $dev) {
     // prepare config backup
     if (! $config_manifest = config_backup()) {
         umount_usb($dev);
-        print("continuing over $dev since can't prepare backpu config \n");
+        log_error("bmbackup warning: continuing over $dev since can't prepare backpup config ");
         continue;
     }
 
@@ -143,7 +135,7 @@ foreach ($usb_disks as $dev) {
     if (isset($config_backup_file_name)) {
         $old_config_backup_file_name = new File (PATH_ARCHIVE . '/' . $config_backup_file_name);
         if ($old_config_backup_file_name->delete()) {
-            clearos_log("bmbackup", 'bmbackup warning: the old config backup could not be deleted');
+            log_error("bmbackup warning: the old config backup could not be deleted");
         }
     }
     
@@ -154,11 +146,10 @@ foreach ($usb_disks as $dev) {
     }
 
     // after successful home backup, delete its old one
-    if (isset($home_backup_file_name))
-    {
+    if (isset($home_backup_file_name)) {
         $old_home_backup_file_name = new File(PATH_ARCHIVE . '/' . $home_backup_file_name);
         if ($old_home_backup_file_name->delete()) {
-            clearos_log("bmbackup", 'bmbackup warning: the old home backup could not be deleted');
+            log_error("bmbackup warning: the old home backup could not be deleted");
         }
     }
 
@@ -179,18 +170,18 @@ foreach ($usb_disks as $dev) {
         if (isset($flexshare_backup_file_name)) {
             $old_flexshare_backup = new File(PATH_ARCHIVE . '/' . $flexshare_backup_file_name);
             if ($old_flexshare_backup->delete()) {
-                clearos_log("bmbackup", 'bmbackup warning: the old flexshare backup could not be deleted');
+                log_error("bmbackup warning: the old flexshare backup could not be deleted");
             }
         }
     }
     
     // unmount the usb disk after all backups are successful.
     if (!umount_usb($dev)) {
-        clearos_log("bmbackup", 'bmbackup warning: failed to umount after successful backup');
+        log_error("bmbackup warning: failed to umount after successful backup");
     }
 
     // if everything goes well, then log a success message.
-    clearos_log("bmbackup", 'bmbackup successful');
+    log_error("bmbackup successful");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -224,12 +215,12 @@ function get_backup_file_names($path)
     $archives = array();
     $folder = new Folder($path);
     if (! $folder) {
-        clearos_log("bmbackup", 'could not get previous backup filenames');
+        log_error("bmbackup warning: could not get previous backup folder");
         return null;
     }
     $contents = $folder->get_listing();
     if (!$contents) {
-        clearos_log("bmbackup", 'could not get previous backup filenames');
+        log_error("bmbackup warning: could not get previous backup file listing");
         return null;
     }  
     foreach ($contents as $value) {
@@ -258,19 +249,19 @@ function check_usb($dev)
     
     // Perform file system check on the backup device
     if ($shell->execute('/sbin/fsck', "-f -y $dev", true)) {
-        clearos_log("bmbackup", "Unable run file-system-check on  $dev");
+        log_error("bmbackup error: Unable run file-system-check on  $dev");
         return false;
     }
 
     if ($shell->execute('/bin/mount -t ext4', "$dev /mnt/backup", true)) {
-        clearos_log("bmbackup", "Unable to mount $dev");
+        log_error("bmbackup error: Unable to mount $dev");
         return false;
     }
 
     // verify that the backup disk is initialized
     $file = new File(INITIALIZED_FILE);
     if (!$file->exists()) {
-        clearos_log("bmbackup", "bmbackup failed: <b> $dev </b> not initialized $error_message");
+        log_error("bmbackup failed: <b> $dev </b> not initialized");
         umount_usb($dev);
         return false;
     }
@@ -283,7 +274,7 @@ function config_backup()
 
     //backup configuration files
     if (! $config_manifest = _read_config()) {
-        clearos_log("bmbackup", 'bmbackup failed: could not read configuration files');
+        log_error("bmbackup failed: could not read configuration files");
         return null;
     }
     // Dump the current LDAP database
@@ -293,7 +284,7 @@ function config_backup()
         $openldap = new LDAP_Driver();
         $openldap->export();
     } else {
-        clearos_log("bmbackup", 'bmbackup failed: could not dump ldap to backup');
+        log_error("bmbackup failed: could not dump ldap to backup");
         return null;
     }
     return $config_manifest;
@@ -309,7 +300,7 @@ function umount_usb($dev)
 {
     $shell = new Shell;
     if ($shell->execute('/bin/umount', $dev, true)) {
-        clearos_log("bmbackup", "bmbackup failed: unable to umount the usb disk: " . $dev);
+        log_error("bmbackup failed: unable to umount the usb disk: " . $dev);
         return FALSE;
     }
     return TRUE;
@@ -426,12 +417,28 @@ function backup($backup_type, $files_manifest)
     $shell->execute('/bin/tar', $attr . $args, true);
     $archive = new file(PATH_ARCHIVE . '/' . $filename);
     if (!$archive) {
-        clearos_log("bmbackup", 'bmbackup failed: the tar file does not exist: ' . PATH_ARCHIVE . ' ' . $archive);
+        log_error("bmbackup failed: the tar file does not exist: " . PATH_ARCHIVE . " " . $archive);
         return false;
     }
 
     $archive->chmod(600);
     return true;
+}
+
+function log_error($msg)
+{
+    clearos_log("bmbackup", $msg);
+    if ($notification_level == NO_NOTIFICATIONS) {
+        return;
+    } else if ($notification_level == ALL_NOTIFICATIONS ) {
+        _send($msg);
+    } else {
+        if (preg_match('/bmbackup failed:/', $msg) ||
+            preg_match('/bmbackup error:/', $msg) ||
+            preg_match('/bmbackup warning:/', $msg) ) {
+            _send($msg);
+        }
+    }
 }
 
 function _send($email_body)
@@ -449,5 +456,5 @@ function _send($email_body)
     $mailer->set_sender('backup@' . $hostname->get_domain());
     $mailer->send();
 }
-// vim: syntax=php ts=2
+// vim: syntax=php ts=4
 ?>
