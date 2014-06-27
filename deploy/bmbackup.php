@@ -427,6 +427,7 @@ function backup($backup_type, $files_manifest)
 
 function log_error($msg)
 {
+    global $notification_level;
     clearos_log("bmbackup", $msg);
     if ($notification_level == NO_NOTIFICATIONS) {
         return;
