@@ -261,7 +261,7 @@ class Bmbackup extends Engine
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $file = new File(self::CRON_FILE, TRUE);
                 $hr = $file->get_contents(-1);
-                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root " . self::CRON_SCRIPT_PATH . "\n");
+                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root /usr/clearos/sandbox/usr/bin/php " . self::CRON_SCRIPT_PATH . "\n");
             } else {
                 $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', '*', 'root', self::CRON_SCRIPT_PATH);
             }
