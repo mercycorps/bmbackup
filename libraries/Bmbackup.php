@@ -80,7 +80,7 @@ class Bmbackup extends Engine
     const PATH_ARCHIVE = '/mnt/backup';
     const CRON_FILE = '/etc/cron.d/app-bmbackup';
     const CRON_CONFIG_FILE_NAME = 'app-bmbackup';
-    const CRON_SCRIPT_PATH = '/usr/clearos/apps/bmbackup/deploy/bmbackup.php > /dev/null 2>&1';
+    const CRON_SCRIPT_PATH = '/usr/clearos/sandbox/usr/bin/php /usr/clearos/apps/bmbackup/deploy/bmbackup.php > /dev/null 2>&1';
     const NO_NOTIFICATIONS = 0;
     const ALL_NOTIFICATIONS = 1;
     const ERROR_NOTIFICATIONS = 2;
@@ -255,13 +255,14 @@ class Bmbackup extends Engine
         $cron = new Cron;
 
         if ($hour == 24) {
-            if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME))
+            if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $cron->delete_configlet(self::CRON_CONFIG_FILE_NAME);
+            }
         } else  {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $file = new File(self::CRON_FILE, TRUE);
                 $hr = $file->get_contents(-1);
-                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root /usr/clearos/sandbox/usr/bin/php " . self::CRON_SCRIPT_PATH . "\n");
+                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root " . self::CRON_SCRIPT_PATH . "\n");
             } else {
                 $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', '*', 'root', self::CRON_SCRIPT_PATH);
             }
