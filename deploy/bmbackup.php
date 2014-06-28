@@ -38,6 +38,7 @@ use \clearos\apps\mail_notification\Mail_Notification as Mailer;
 use \clearos\apps\bmbackup\Bmbackup as Bmbackup;
 
 clearos_load_library('bmbackup/Bmbackup');
+clearos_load_library('mail_notification/Mail_Notification');
 
 ///////////////////////////////////////////////////////////////////////////////
 // C O N S T A N T S
