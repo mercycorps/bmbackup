@@ -1,10 +1,8 @@
 <?php
 
 $lang['bmbackup_app_name'] = 'Baremetal Backup And Restore';
-$lang['bmbackup_app_description'] = "The 'Bare Metal Backup / Restore' saves and restores both users' home directories and the configuration settings to and from the USB disk that is initialized by the process below.<br />
-<br />
-<b>
-Note: Please make sure to restore home directories before configuration</b>";
+$lang['bmbackup_app_description'] = "The Bare Metal Backup/Restore app saves and restores both users' home directories and the configuration settings to and from a USB disk that is initialized by the process below.";
+$lang['bmbackup_app_tooltip'] = 'Please make sure to restore home directories before configuration.';
 $lang['bmbackup_bmbackup'] = 'Baremetal Backup/Restore';
 $lang['bmbackup_usb'] = 'Detected USB-Storage Devices';
 $lang['bmbackup_device'] = 'Physical Device';

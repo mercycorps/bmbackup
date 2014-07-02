@@ -3,27 +3,27 @@ Name: app-bmbackup
 Epoch: 1
 Version: 1.0.0
 Release: 1%{dist}
-Summary: **bmbackup_app_name**
+Summary: Baremetal Backup And Restore
 License: GPLv3
 Group: ClearOS/Apps
-Packager: Mercy Corps
-Vendor: Mercy Corps
+Packager: Mercy Corps <mkhan@mercycorps.org>
+Vendor: Mercy Corps <mkhan@mercycorps.org>
 Source: %{name}-%{version}.tar.gz
 Buildarch: noarch
 Requires: %{name}-core = 1:%{version}-%{release}
 Requires: app-base
 
 %description
-**bmbackup_app_description**
+The Bare Metal Backup/Restore app saves and restores both users' home directories and the configuration settings to and from a USB disk that is initialized by the process below.
 
 %package core
-Summary: **bmbackup_app_name** - Core
+Summary: Baremetal Backup And Restore - Core
 License: LGPLv3
 Group: ClearOS/Libraries
 Requires: app-base-core
 
 %description core
-**bmbackup_app_description**
+The Bare Metal Backup/Restore app saves and restores both users' home directories and the configuration settings to and from a USB disk that is initialized by the process below.
 
 This package provides the core API and libraries.
 
@@ -34,9 +34,10 @@ This package provides the core API and libraries.
 %install
 mkdir -p -m 755 %{buildroot}/usr/clearos/apps/bmbackup
 cp -r * %{buildroot}/usr/clearos/apps/bmbackup/
-
-install -d -m 0755 %{buildroot}/etc/clearos/bmbackup.d
+rm -f %{buildroot}/usr/clearos/apps/bmbackup/README.md
+install -d -m 755 %{buildroot}/etc/clearos/bmbackup.d
 install -D -m 0644 packaging/backup.conf %{buildroot}/etc/clearos/bmbackup.d/backup.conf
+install -D -m 0644 packaging/email.conf %{buildroot}/etc/clearos/bmbackup.d/email.conf
 install -D -m 0644 packaging/usb.conf %{buildroot}/etc/clearos/bmbackup.d/usb.conf
 
 %post
@@ -74,11 +75,13 @@ exit 0
 
 %files core
 %defattr(-,root,root)
+%doc README.md
 %exclude /usr/clearos/apps/bmbackup/packaging
 %dir /usr/clearos/apps/bmbackup
-%dir /etc/clearos/bmbackup.d
+%dir %attr(755,webconfig,webconfig) /etc/clearos/bmbackup.d
 /usr/clearos/apps/bmbackup/deploy
 /usr/clearos/apps/bmbackup/language
 /usr/clearos/apps/bmbackup/libraries
-/etc/clearos/bmbackup.d/backup.conf
-/etc/clearos/bmbackup.d/usb.conf
+%attr(0644,webconfig,webconfig) %config(noreplace) /etc/clearos/bmbackup.d/backup.conf
+%attr(0644,webconfig,webconfig) %config(noreplace) /etc/clearos/bmbackup.d/email.conf
+%attr(0644,webconfig,webconfig) %config(noreplace) /etc/clearos/bmbackup.d/usb.conf
