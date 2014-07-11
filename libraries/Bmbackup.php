@@ -377,7 +377,75 @@ class Bmbackup extends Engine
 
         // Find USB devices that match: %d-%d
         $entries = $this->_scan_directory(self::PATH_USB_DEVICES, '/^\d-\d$/');
+        
+        if (!empty($entries)) {
+            $devices = $this->_get_devices_helper($entries);
+        }
+        
+        // Some USB devices are detected in a slightly different way:
+        // Find USB devices that match: %d-%d.%d
+        $entries2 = $this->_scan_directory(self::PATH_USB_DEVICES, '/^\d-\d\.\d$/');
+        if (!empty($entries2)) {
+            array_push($devices, $this->_get_devices_helper($entries2));
+        }
 
+        if (count($devices)) {
+            // Create a hashed array of all device nodes that match: /dev/s*
+            // XXX: This can be fairly expensive, takes a few seconds to run.
+            if (!($ph = popen('/usr/bin/stat -c 0x%t:0x%T:%n /dev/s*', 'r')))
+                throw new Engine_Exception("Error running stat command");
+
+            $nodes = array();
+            $major = '';
+            $minor = '';
+
+            while (!feof($ph)) {
+                $buffer = chop(fgets($ph, 4096));
+
+                if (sscanf($buffer, '%x:%x:', $major, $minor) != 2)
+                    continue;
+
+                if ($major == 0)
+                    continue;
+
+                $nodes["$major:$minor"] = substr($buffer, strrpos($buffer, ':') + 1);
+            }
+
+            if (pclose($ph) != 0) {
+                throw new Engine_Exception("Error running stat command");
+            }
+
+            // Hopefully we can now find the TRUE device name for each
+            // storage device found above.  Validation continues...
+            foreach ($devices as $key => $device) {
+                if (!isset($nodes[$device['nodes']])) {
+                    unset($devices[$key]);
+                    continue;
+                }
+
+                // Set the block device
+                $devices[$key]['device'] = $nodes[$device['nodes']];
+                
+                $device_name = basename($nodes[$device['nodes']]);
+                
+                // Here we are looking for detected partitions
+                $partitions = $this->_scan_directory($device['path'] . "/block/" . $device_name, '/^' . $device_name . '\d$/');
+                if (! empty($partitions)) {
+                    foreach($partitions as $partition)
+                        $devices[$key]['partition'][] = dirname($nodes[$device['nodes']]) . '/' . $partition;
+                }
+
+                unset($devices[$key]['path']);
+                unset($devices[$key]['nodes']);
+            }
+        }
+        return $devices;
+    }
+
+    final private function _get_devices_helper($entries)
+    {
+        $devices = array();
+        
         // Walk through the expected USB -> SCSI /sys paths.
         foreach ($entries as $entry) {
             
@@ -467,60 +535,8 @@ class Bmbackup extends Engine
             // Valid device found (almost, continues below)...
             $devices[] = $device;
         }
-
-        if (count($devices)) {
-            // Create a hashed array of all device nodes that match: /dev/s*
-            // XXX: This can be fairly expensive, takes a few seconds to run.
-            if (!($ph = popen('/usr/bin/stat -c 0x%t:0x%T:%n /dev/s*', 'r')))
-                throw new Engine_Exception("Error running stat command");
-
-            $nodes = array();
-            $major = '';
-            $minor = '';
-
-            while (!feof($ph)) {
-                $buffer = chop(fgets($ph, 4096));
-
-                if (sscanf($buffer, '%x:%x:', $major, $minor) != 2)
-                    continue;
-
-                if ($major == 0)
-                    continue;
-
-                $nodes["$major:$minor"] = substr($buffer, strrpos($buffer, ':') + 1);
-            }
-
-            if (pclose($ph) != 0) {
-                throw new Engine_Exception("Error running stat command");
-            }
-
-            // Hopefully we can now find the TRUE device name for each
-            // storage device found above.  Validation continues...
-            foreach ($devices as $key => $device) {
-                if (!isset($nodes[$device['nodes']])) {
-                    unset($devices[$key]);
-                    continue;
-                }
-
-                // Set the block device
-                $devices[$key]['device'] = $nodes[$device['nodes']];
-                
-                $device_name = basename($nodes[$device['nodes']]);
-                
-                // Here we are looking for detected partitions
-                $partitions = $this->_scan_directory($device['path'] . "/block/" . $device_name, '/^' . $device_name . '\d$/');
-                if (! empty($partitions)) {
-                    foreach($partitions as $partition)
-                        $devices[$key]['partition'][] = dirname($nodes[$device['nodes']]) . '/' . $partition;
-                }
-
-                unset($devices[$key]['path']);
-                unset($devices[$key]['nodes']);
-            }
-        }
         return $devices;
     }
-
 
     /**
      * Checks if a storage device is already mounted
