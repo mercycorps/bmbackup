@@ -380,7 +380,7 @@ class Bmbackup extends Engine
         
         if (!empty($entries)) {
             $devices_set_1 = $this->_get_devices_helper($entries);
-            $devices = $devices_set_1[0];
+            $devices[] = $devices_set_1[0];
         }
         
         // Some USB devices are detected in a slightly different way:
