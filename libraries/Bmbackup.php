@@ -379,14 +379,16 @@ class Bmbackup extends Engine
         $entries = $this->_scan_directory(self::PATH_USB_DEVICES, '/^\d-\d$/');
         
         if (!empty($entries)) {
-            $devices = $this->_get_devices_helper($entries);
+            $devices_set_1 = $this->_get_devices_helper($entries);
+            $devices = $devices_set_1[0];
         }
         
         // Some USB devices are detected in a slightly different way:
         // Find USB devices that match: %d-%d.%d
         $entries2 = $this->_scan_directory(self::PATH_USB_DEVICES, '/^\d-\d\.\d$/');
         if (!empty($entries2)) {
-            array_push($devices, $this->_get_devices_helper($entries2));
+            $devices_set_2 = $this->_get_devices_helper($entries2);
+            $devices[] = $devices_set_2[0];
         }
 
         if (count($devices)) {
