@@ -75,7 +75,6 @@ class Bmbackup extends Engine
     const INITIALIZED_FILE = '/mnt/backup/INITIALIZED';
     const PATH_SCSI_DEVICES = '/sys/bus/scsi/devices';
     const PATH_USB_DEVICES = '/sys/bus/usb/devices';
-    const USB_PARTITION_PATH = '/etc/clearos/bmbackup.d/usb.conf';
     const ETC_MTAB = '/etc/mtab';
     const PATH_ARCHIVE = '/mnt/backup';
     const CRON_FILE = '/etc/cron.d/app-bmbackup';
@@ -189,7 +188,7 @@ class Bmbackup extends Engine
 
         // check to make sure the partitioning is successful.
         try {
-            $shell->execute('/sbin/sfdisk', "-q -f $device < " . self::USB_PARTITION_PATH . ' > /tmp/out.log 2> /tmp/err.log', TRUE);
+            $shell->execute('/sbin/parted', "-s -a optimal $device mklabel gpt mkpart primary ext4 '0%' '100%' > /tmp/out.log 2> /tmp/err.log", TRUE);
         } catch (Exception $e) {
             clearos_log("bmbackup", $e);
             throw new Exception(clearos_exception_message($e), CLEAROS_ERROR);
