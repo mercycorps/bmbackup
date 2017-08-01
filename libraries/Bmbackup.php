@@ -244,15 +244,19 @@ class Bmbackup extends Engine
     /**
      * Makes an entry in /etc/cron.d/ folder for bmbackup to run on a regular schedule
      *
-     * @param integer $hour hour to have the cron job run
+     * @param integer $hour hour to have the cron job run, INT $dayofw Day of week when the cron job will run
      *
      * @access public
      * @return None
      */
-    function update_cron_tab($hour)
+
+    // $dayofw
+    function update_cron_tab($hour,$dayofw)
     {
         $cron = new Cron;
 
+
+        //|| $dayofw == 8
         if ($hour == 24) {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $cron->delete_configlet(self::CRON_CONFIG_FILE_NAME);
@@ -260,10 +264,14 @@ class Bmbackup extends Engine
         } else  {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $file = new File(self::CRON_FILE, TRUE);
+                
                 $hr = $file->get_contents(-1);
-                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root " . self::CRON_SCRIPT_PATH . "\n");
-            } else {
-                $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', '*', 'root', self::CRON_SCRIPT_PATH);
+                $dow = $file->get_contents(-4);
+                //$dow = $file->get_contents(-4);
+                                                                        //dayofw
+                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * $dayofw root " . self::CRON_SCRIPT_PATH . "\n");
+            } else {                                                                           //dayofw
+                $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', $dayofw, 'root', self::CRON_SCRIPT_PATH);
             }
         }
     }

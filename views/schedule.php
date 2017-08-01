@@ -46,7 +46,6 @@ $times[11] = '11:00 AM';
 $times[12] = '12:00 PM';
 $times[13] = '01:00 PM';
 $times[14] = '02:00 PM';
-
 $times[15] = '03:00 PM';
 $times[16] = '04:00 PM';
 $times[17] = '05:00 PM';
@@ -57,13 +56,24 @@ $times[21] = '09:00 PM';
 $times[22] = '10:00 PM';
 $times[23] = '11:00 PM';
     
+$daysw[8] = 'Disabled';
+
+$daysw[0] = 'Sunday'; 
+$daysw[1] = 'Monday';
+$daysw[2] = 'Tuesday';
+$daysw[3] = 'Wednesday';
+$daysw[4] = 'Thursday';
+$daysw[5] = 'Friday';
+$daysw[6] = 'Saturday';
+   
 ///////////////////////////////////////////////////////////////////////////////
 // Form
 ///////////////////////////////////////////////////////////////////////////////
 echo form_open('bmbackup');
 echo form_header(lang('bmbackup_schedule'), array('id' => 'schedule_form'));
 
-echo field_dropdown('hour', $times, $hour, lang('bmbackup_time'), FALSE);
+echo field_dropdown('day of week', $daysw, $daysofw, lang('bmbackup_dayofw'), FALSE);
+echo field_dropdown('hour', $times, $hour, lang('bmbackup_hour'), FALSE);
 echo field_button_set($buttons);
 
 echo form_footer();
