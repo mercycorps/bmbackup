@@ -55,8 +55,9 @@ class Schedule extends ClearOS_Controller
             $hr = $file->get_contents(-1);
             preg_match('/^ \d+\s+(\d+).* $/', $hr, $matches);
             $hour = $matches[1];
-            $dayofw = $file->get_contents(-4)
-            preg_match('/^ \d+\s+(\d+).* $/', $hr, $matches);
+            
+            $dow = $file->get_contents(-4)
+            preg_match('/^ \d+\s+(\d+).* $/', $dow, $matches);
             $dayofw = $matches[1];
         }
 
