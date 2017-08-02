@@ -42,8 +42,8 @@ class Schedule extends ClearOS_Controller
         }
         
         // Load schedule setting
-        //If hour set is not recognizec (0-23) then updates are disabled (24) 
-        //
+        //If hour set is not recognized (0-23) then updates are disabled (24) 
+        //If day of week is not recognized (1-7) thne updates are disabled (8)
         //----------------------
 
         $shell = new Shell;
@@ -55,6 +55,9 @@ class Schedule extends ClearOS_Controller
             $hr = $file->get_contents(-1);
             preg_match('/^ \d+\s+(\d+).* $/', $hr, $matches);
             $hour = $matches[1];
+            $dayofw = $file->get_contents(-4)
+            preg_match('/^ \d+\s+(\d+).* $/', $hr, $matches);
+            $dayofw = $matches[1];
         }
 
         // Load views
