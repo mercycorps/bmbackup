@@ -49,7 +49,8 @@ class Schedule extends ClearOS_Controller
         $shell = new Shell;
         $file = new File(bmbackup::CRON_FILE, TRUE);
         if (!$file->exists()) {
-            $hour = 24;                             
+            $hour = 24;
+            $dayofw = 8;                             
         } else {
             $hr = $file->get_contents(-1);
             preg_match('/^ \d+\s+(\d+).* $/', $hr, $matches);

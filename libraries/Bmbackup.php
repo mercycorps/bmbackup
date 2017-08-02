@@ -257,7 +257,7 @@ class Bmbackup extends Engine
 
 
         //|| $dayofw == 8
-        if ($hour == 24) {
+        if ($hour == 24 || $dayofw == 8) {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $cron->delete_configlet(self::CRON_CONFIG_FILE_NAME);
             }
