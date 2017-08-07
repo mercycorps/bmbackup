@@ -26,9 +26,7 @@ $buttons = array(
 //    anchor_custom('/app/bmbackup/schedule/backup', lang('bmbackup_backup'), 'high')
 );
 
-$times[24] = 'Disabled';
-
-//AM Hours
+$times = array();
 $times[0] = '12:00 AM';
 $times[1] = '01:00 AM';
 $times[2] = '02:00 AM';
@@ -55,25 +53,27 @@ $times[20] = '08:00 PM';
 $times[21] = '09:00 PM';
 $times[22] = '10:00 PM';
 $times[23] = '11:00 PM';
-    
-$daysw[8] = 'Disabled';
 
-$daysw[0] = 'Sunday'; 
-$daysw[1] = 'Monday';
-$daysw[2] = 'Tuesday';
-$daysw[3] = 'Wednesday';
-$daysw[4] = 'Thursday';
-$daysw[5] = 'Friday';
-$daysw[6] = 'Saturday';
-   
+$days = array();
+$days[8] = 'Disabled';
+$days[0] = 'Sunday';
+$days[1] = 'Monday';
+$days[2] = 'Tuesday';
+$days[3] = 'Wednesday';
+$days[4] = 'Thursday';
+$days[5] = 'Friday';
+$days[6] = 'Saturday';
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Form
 ///////////////////////////////////////////////////////////////////////////////
 echo form_open('bmbackup');
 echo form_header(lang('bmbackup_schedule'), array('id' => 'schedule_form'));
 
-echo field_dropdown('day of week', $daysw, $daysofw, lang('bmbackup_dayofw'), FALSE);
-echo field_dropdown('hour', $times, $hour, lang('bmbackup_hour'), FALSE);
+//Drop Down for the day and hour sections
+echo field_dropdown('hour', $times, $hour, lang('bmbackup_time_hour'), FALSE);
+echo field_dropdown('Day', $days, $hour, lang('bmbackup_time_day'), FALSE);
 echo field_button_set($buttons);
 
 echo form_footer();

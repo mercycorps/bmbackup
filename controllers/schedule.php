@@ -42,28 +42,20 @@ class Schedule extends ClearOS_Controller
         }
         
         // Load schedule setting
-        //If hour set is not recognized (0-23) then updates are disabled (24) 
-        //If day of week is not recognized (1-7) thne updates are disabled (8)
         //----------------------
 
         $shell = new Shell;
         $file = new File(bmbackup::CRON_FILE, TRUE);
         if (!$file->exists()) {
             $hour = 24;
-            $dayofw = 8;                             
         } else {
             $hr = $file->get_contents(-1);
-            preg_match('/^ \d+\s+(\d+).* $/', $hr, $matches);
+            preg_match('/^\d+\s+(\d+).*$/', $hr, $matches);
             $hour = $matches[1];
-            
-            $dow = $file->get_contents(-4)
-            preg_match('/^ \d+\s+(\d+).* $/', $dow, $matches);
-            $dayofw = $matches[1];
         }
 
         // Load views
         //-----------
-        //$day['Day']=$day;
         $data['hour']=$hour;
 
         $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));
