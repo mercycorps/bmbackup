@@ -20,13 +20,20 @@ $this->lang->load('bmbackup');
 
 ///////////////////////////////////////////////////////////////////////////////
 // Form Handler 
+// Updating schedule in controllers/schedule.php as 'update schedule'
 ///////////////////////////////////////////////////////////////////////////////
 $buttons = array(
-    form_submit_custom('update_schedule', lang('bmbackup_update_hour')),
-//    anchor_custom('/app/bmbackup/schedule/backup', lang('bmbackup_backup'), 'high')
+    form_submit_custom('update_schedule', lang('bmbackup_update_hour'), lang('bmbackup_time_day')),
+
 );
 
+
 $times = array();
+$wdays = array();
+
+$times[24] = 'Disabled';
+
+//AM Hours
 $times[0] = '12:00 AM';
 $times[1] = '01:00 AM';
 $times[2] = '02:00 AM';
@@ -53,16 +60,19 @@ $times[20] = '08:00 PM';
 $times[21] = '09:00 PM';
 $times[22] = '10:00 PM';
 $times[23] = '11:00 PM';
+    
+    
+$wdays[8] = 'Disabled';
 
-$days = array();
-$days[8] = 'Disabled';
-$days[0] = 'Sunday';
-$days[1] = 'Monday';
-$days[2] = 'Tuesday';
-$days[3] = 'Wednesday';
-$days[4] = 'Thursday';
-$days[5] = 'Friday';
-$days[6] = 'Saturday';
+$wdays[0] = 'Sunday'; 
+$wdays[1] = 'Monday';
+$wdays[2] = 'Tuesday';
+$wdays[3] = 'Wednesday';
+$wdays[4] = 'Thursday';
+$wdays[5] = 'Friday';
+$wdays[6] = 'Saturday';
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,8 +82,17 @@ echo form_open('bmbackup');
 echo form_header(lang('bmbackup_schedule'), array('id' => 'schedule_form'));
 
 //Drop Down for the day and hour sections
-echo field_dropdown('hour', $times, $hour, lang('bmbackup_time_hour'), FALSE);
-echo field_dropdown('Day', $days, $hour, lang('bmbackup_time_day'), FALSE);
+echo field_dropdown('drop-down-hour', $times, $hour, lang('bmbackup_time_hour'), FALSE);
+
+echo field_checkbox('checkbox-day-su', $sun0, lang('bmbackup_su'), FALSE);
+echo field_checkbox('checkbox-day-mo', $mon0, lang('bmbackup_mo'), FALSE);
+echo field_checkbox('checkbox-day-tu', $tue0, lang('bmbackup_tu'), FALSE);
+echo field_checkbox('checkbox-day-we', $wed0, lang('bmbackup_we'), FALSE);
+echo field_checkbox('checkbox-day-th', $thu0, lang('bmbackup_th'), FALSE);
+echo field_checkbox('checkbox-day-fr', $fri0, lang('bmbackup_fr'), FALSE);
+echo field_checkbox('checkbox-day-sa', $sat0, lang('bmbackup_sa'), FALSE);
+
+
 echo field_button_set($buttons);
 
 echo form_footer();

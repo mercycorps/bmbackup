@@ -34,7 +34,7 @@ This package provides the core API and libraries.
 %install
 mkdir -p -m 755 %{buildroot}/usr/clearos/apps/bmbackup
 cp -r * %{buildroot}/usr/clearos/apps/bmbackup/
-rm f %{buildroot}/usr/clearos/apps/bmbackup/README.md
+rm -f %{buildroot}/usr/clearos/apps/bmbackup/README.md
 install -d -m 755 %{buildroot}/etc/clearos/bmbackup.d
 install -D -m 0644 packaging/backup.conf %{buildroot}/etc/clearos/bmbackup.d/backup.conf
 install -D -m 0644 packaging/email.conf %{buildroot}/etc/clearos/bmbackup.d/email.conf

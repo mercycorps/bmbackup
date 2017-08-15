@@ -241,32 +241,83 @@ class Bmbackup extends Engine
         return true;
     }
 
+
+
     /**
      * Makes an entry in /etc/cron.d/ folder for bmbackup to run on a regular schedule
      *
-     * @param integer $hour hour to have the cron job run
+     * 
+     * @param integer $hour, integer Day of week <- Sent from controllers/schedule.php
      *
      * @access public
      * @return None
      */
-    function update_cron_tab($hour)
+    function update_cron_tab($hour, $dow, $sun, $mon, $tue, $wed, $thu, $fri, $sat)
     {
+
         $cron = new Cron;
 
-        if ($hour == 24) {
+
+        $DayName;
+
+        if ($sun == 'on') {
+            $DayName .= 'sun,';
+            # code...
+        }
+
+        if ($mon == 'on') {
+            $DayName .= 'mon,';
+            # code...
+        }
+
+        if ($tue == 'on') {
+            $DayName .= 'tue,';
+            # code...
+        }
+
+        if ($wed == 'on') {
+            $DayName .= 'wed,';
+            # code...
+        }
+        
+        if ($thu == 'on') {
+            $DayName .= 'thu,';
+            # code..
+        }
+        
+        if ($fri == 'on') {
+            $DayName .= 'fri,';
+            # code...
+        }
+        
+        if ($sat == 'on') {
+            $DayName .= 'sat,';
+            # code...
+        }
+
+        //if Disabled
+        if ($hour == 24 || $dow == 8) {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $cron->delete_configlet(self::CRON_CONFIG_FILE_NAME);
             }
         } else  {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $file = new File(self::CRON_FILE, TRUE);
-                $hr = $file->get_contents(-1);
-                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * * root " . self::CRON_SCRIPT_PATH . "\n");
+                
+                $hr = $file->get_contents(-1);  //Checking for conflicting contents in the cron file
+                $dw = $file->get_contents(-4);
+
+                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * $DayName root " . self::CRON_SCRIPT_PATH . "\n");              
+            
             } else {
-                $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', '*', 'root', self::CRON_SCRIPT_PATH);
+                $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', $DayName, 'root', self::CRON_SCRIPT_PATH);
+                
+               
             }
         }
     }
+
+
 
     /**
      * Updates the config settings for email notification

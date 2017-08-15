@@ -16,6 +16,15 @@ $lang['bmbackup_update_hour'] = 'Update Backup Schedule';
 
 $lang['bmbackup_time_hour'] = 'Backup Schedule: Hour';
 $lang['bmbackup_time_day'] = 'Backup Schedule: Day';
+$lang['bmbackup_su'] = 'Backup Schedule: Sunday';
+$lang['bmbackup_mo'] = 'Backup Schedule: Monday';
+$lang['bmbackup_tu'] = 'Backup Schedule: Tuesday';
+$lang['bmbackup_we'] = 'Backup Schedule: Wednesday';
+$lang['bmbackup_th'] = 'Backup Schedule: Thursday';
+$lang['bmbackup_fr'] = 'Backup Schedule: Friday';
+$lang['bmbackup_sa'] = 'Backup Schedule: Saturday';
+
+
 
 $lang['bmbackup_email'] = 'Email Notification Settings';
 $lang['bmbackup_notification'] = 'Notification Level';
