@@ -15,7 +15,6 @@ $lang['bmbackup_backup'] = 'Backup Now';
 $lang['bmbackup_update_hour'] = 'Update Backup Schedule';
 
 $lang['bmbackup_time_hour'] = 'Backup Schedule: Hour';
-$lang['bmbackup_time_day'] = 'Backup Schedule: Day';
 $lang['bmbackup_su'] = 'Backup Schedule: Sunday';
 $lang['bmbackup_mo'] = 'Backup Schedule: Monday';
 $lang['bmbackup_tu'] = 'Backup Schedule: Tuesday';

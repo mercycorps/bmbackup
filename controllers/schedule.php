@@ -29,28 +29,7 @@ class Schedule extends ClearOS_Controller
         $this->load->library('base/File');
         $this->load->library('base/Shell');
 
-        // Handle form submit
-        //-------------------
-        if ($this->input->post('update_schedule')) {
-            try {
-                $this->bmbackup->update_cron_tab(
-                    $this->input->post('drop-down-hour'), 
-                    $this->input->post('drop-down-day'), 
-                    $this->input->post('checkbox-day-su'), 
-                    $this->input->post('checkbox-day-mo'), 
-                    $this->input->post('checkbox-day-tu'), 
-                    $this->input->post('checkbox-day-we'), 
-                    $this->input->post('checkbox-day-th'), 
-                    $this->input->post('checkbox-day-fr'), 
-                    $this->input->post('checkbox-day-sa'));
-                
 
-
-            } catch (Exception $e) {
-                $this->page->view_exception($e);
-                return;
-            }
-        }
         
         // Load schedule setting
         //----------------------
@@ -59,7 +38,6 @@ class Schedule extends ClearOS_Controller
         $file = new File(bmbackup::CRON_FILE, TRUE);
         if (!$file->exists()) {
             $hour = 24;
-            $dow = 8;
         } else {
             $hr = $file->get_contents(-1);
             preg_match('/^\d+\s+(\d+).*$/', $hr, $matches);
@@ -73,9 +51,66 @@ class Schedule extends ClearOS_Controller
         // Load views
         //-----------
         $data['hour']=$hour;
-        $data['dow']=$dow;
+        $data['params']=$params;                              // ***      
 
-        $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));       
+        $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));
+        
+
+        // Checkbox array handling
+        //-----------
+        $arrFields = array('checkbox-day-su','checkbox-day-mo','checkbox-day-tu','checkbox-day-we','checkbox-day-th','checkbox-day-fr','checkbox-day-sa');
+
+        foreach($arrFields as $field){
+        $params[$field] = filter_input(INPUT_POST, $field, FILTER_DEFAULT);
+        }
+
+        //var_dump($params);                                // ***
+        //var_dump($arrFields);                             // ***
+        $DayName;
+        
+        if($params[$arrFields[0]] == 'on'){
+            $DayName .= 'sun,';
+        }
+        if($params[$arrFields[1]] == 'on'){
+            $DayName .= 'mon,';
+        }
+        if($params[$arrFields[2]] == 'on'){
+            $DayName .= 'tue,';
+        }
+        if($params[$arrFields[3]] == 'on'){
+            $DayName .= 'wed,';
+        }
+        if($params[$arrFields[4]] == 'on'){
+            $DayName .= 'thu,';
+        }
+        if($params[$arrFields[5]] == 'on'){
+            $DayName .= 'fri,';
+        }
+        if($params[$arrFields[6]] == 'on'){
+            $DayName .= 'sat,';
+        }
+
+        //var_dump($DayName);
+
+        //print_r("Print for checkbox su");
+        //print_r($this->input->post('checkbox-day-su'));  
+
+        // Handle form submit
+        //-------------------
+        if ($this->input->post('update_schedule')) {
+            try {
+                $this->bmbackup->update_cron_tab(
+                    $this->input->post('drop-down-hour'), 
+                    $DayName
+                    );
+                
+            } catch (Exception $e) {
+                $this->page->view_exception($e);
+                return;
+            }
+        }
+
+        //////
 
     }
   

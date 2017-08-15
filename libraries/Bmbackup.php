@@ -247,56 +247,22 @@ class Bmbackup extends Engine
      * Makes an entry in /etc/cron.d/ folder for bmbackup to run on a regular schedule
      *
      * 
-     * @param integer $hour, integer Day of week <- Sent from controllers/schedule.php
+     * @param integer $hour
+     * @param string output from checkbox $DayOfWeek 
+     * <- Sent from controllers/schedule.php
      *
      * @access public
      * @return None
      */
-    function update_cron_tab($hour, $dow, $sun, $mon, $tue, $wed, $thu, $fri, $sat)
+    function update_cron_tab($hour, $DayName)
     {
+
 
         $cron = new Cron;
 
 
-        $DayName;
-
-        if ($sun == 'on') {
-            $DayName .= 'sun,';
-            # code...
-        }
-
-        if ($mon == 'on') {
-            $DayName .= 'mon,';
-            # code...
-        }
-
-        if ($tue == 'on') {
-            $DayName .= 'tue,';
-            # code...
-        }
-
-        if ($wed == 'on') {
-            $DayName .= 'wed,';
-            # code...
-        }
-        
-        if ($thu == 'on') {
-            $DayName .= 'thu,';
-            # code..
-        }
-        
-        if ($fri == 'on') {
-            $DayName .= 'fri,';
-            # code...
-        }
-        
-        if ($sat == 'on') {
-            $DayName .= 'sat,';
-            # code...
-        }
-
         //if Disabled
-        if ($hour == 24 || $dow == 8) {
+        if ($hour == 24) {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
                 $cron->delete_configlet(self::CRON_CONFIG_FILE_NAME);
             }

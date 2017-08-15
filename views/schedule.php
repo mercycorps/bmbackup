@@ -81,16 +81,16 @@ $wdays[6] = 'Saturday';
 echo form_open('bmbackup');
 echo form_header(lang('bmbackup_schedule'), array('id' => 'schedule_form'));
 
-//Drop Down for the day and hour sections
+//Drop Down for the hour section
 echo field_dropdown('drop-down-hour', $times, $hour, lang('bmbackup_time_hour'), FALSE);
-
-echo field_checkbox('checkbox-day-su', $sun0, lang('bmbackup_su'), FALSE);
-echo field_checkbox('checkbox-day-mo', $mon0, lang('bmbackup_mo'), FALSE);
-echo field_checkbox('checkbox-day-tu', $tue0, lang('bmbackup_tu'), FALSE);
-echo field_checkbox('checkbox-day-we', $wed0, lang('bmbackup_we'), FALSE);
-echo field_checkbox('checkbox-day-th', $thu0, lang('bmbackup_th'), FALSE);
-echo field_checkbox('checkbox-day-fr', $fri0, lang('bmbackup_fr'), FALSE);
-echo field_checkbox('checkbox-day-sa', $sat0, lang('bmbackup_sa'), FALSE);
+//Checkboxes for the Day of week section
+echo field_checkbox('checkbox-day-su', $DayBi[0], lang('bmbackup_su'), FALSE);
+echo field_checkbox('checkbox-day-mo', $DayBi[1], lang('bmbackup_mo'), FALSE);
+echo field_checkbox('checkbox-day-tu', $DayBi[2], lang('bmbackup_tu'), FALSE);
+echo field_checkbox('checkbox-day-we', $DayBi[3], lang('bmbackup_we'), FALSE);
+echo field_checkbox('checkbox-day-th', $DayBi[4], lang('bmbackup_th'), FALSE);
+echo field_checkbox('checkbox-day-fr', $DayBi[5], lang('bmbackup_fr'), FALSE);
+echo field_checkbox('checkbox-day-sa', $DayBi[6], lang('bmbackup_sa'), FALSE);
 
 
 echo field_button_set($buttons);
