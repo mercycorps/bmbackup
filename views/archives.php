@@ -57,7 +57,7 @@ if (empty($check_empty[0]))
 }
 
 $buttons = array(
-    form_submit_custom('update_archives', lang('bmbackup_update_hour'), lang('bmbackup_time_day')),
+    form_submit_custom('update_archives', lang('bmbackup_update_hour')),
 
 );
 
@@ -97,6 +97,11 @@ echo summary_table(
     $options
 );
 */
+
+
+echo form_open('bmbackup');
+echo form_header(lang('bmbackup_archives_backup'), array('id' => 'schedule_form'));
+
 // Checkbox (name,value,default setting)
 echo field_checkbox('checkbox_conf', $tempb[0], lang('bmbackup_conf'), FALSE);
 echo field_checkbox('checkbox_home', $tempb[1], lang('bmbackup_home'), FALSE);
@@ -105,6 +110,8 @@ echo field_checkbox('checkbox_flex', $tempb[2], lang('bmbackup_flex'), FALSE);
 echo field_button_set($buttons);
 
 
+echo form_footer();
+echo form_close();
 
 
 //print_r("Test starts here: ");

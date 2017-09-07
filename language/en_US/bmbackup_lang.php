@@ -12,6 +12,7 @@ $lang['bmbackup_initialize'] = 'Initialize';
 $lang['bmbackup_confirm_initialize'] = 'Are you sure you want to initialize the following device:';
 $lang['bmbackup_schedule'] = 'Schedule Bare Metal Backup';
 $lang['bmbackup_backup'] = 'Backup Now';
+
 $lang['bmbackup_update_hour'] = 'Update Backup Schedule';
 
 $lang['bmbackup_time_hour'] = 'Backup Schedule: Hour';
@@ -33,9 +34,9 @@ $lang['bmbackup_update'] = 'Update';
 $lang['bmbackup_update_notification'] = 'Update Notification Settings';
 
 $lang['bmbackup_restore'] = 'Restore';
-$lang['bmbackup_archives_restore'] = 'Archives to be Restored';
+$lang['bmbackup_archives_restore'] = 'Archives to Restore';
+$lang['bmbackup_archives_backup'] = 'Archives to Backup';
 
-$lang['bmbackup_archives_backup'] = 'Archives to be backed up';
 
 $lang['bmbackup_conf'] = 'Backup; Config';
 $lang['bmbackup_home'] = 'Backup; Home Directory';
