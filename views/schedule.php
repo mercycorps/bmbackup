@@ -22,11 +22,10 @@ $this->lang->load('bmbackup');
 // Form Handler 
 // Updating schedule in controllers/schedule.php as 'update schedule'
 ///////////////////////////////////////////////////////////////////////////////
+
 $buttons = array(
-    form_submit_custom('update_schedule', lang('bmbackup_update_hour'), lang('bmbackup_time_day')),
-
+    form_submit_custom('update_schedule', lang('bmbackup_update_hour')),
 );
-
 
 $times = array();
 $wdays = array();
@@ -61,18 +60,6 @@ $times[21] = '09:00 PM';
 $times[22] = '10:00 PM';
 $times[23] = '11:00 PM';
     
-    
-$wdays[8] = 'Disabled';
-
-$wdays[0] = 'Sunday'; 
-$wdays[1] = 'Monday';
-$wdays[2] = 'Tuesday';
-$wdays[3] = 'Wednesday';
-$wdays[4] = 'Thursday';
-$wdays[5] = 'Friday';
-$wdays[6] = 'Saturday';
-
-
 
 
 ///////////////////////////////////////////////////////////////////////////////

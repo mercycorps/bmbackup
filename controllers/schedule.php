@@ -45,15 +45,10 @@ class Schedule extends ClearOS_Controller
 
             $dw = $file->get_contents(-4);
             preg_match('/^\d+\s+\d+\s+\d+\s+\d+\s+(\d+).*$/', $dw, $matches);
-            $dow = $matches[1];
+            $dow = $matches[1];                                // ***
         }
 
-        // Load views
-        //-----------
-        $data['hour']=$hour;
-        $data['params']=$params;                              // ***      
 
-        $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));
         
 
         // Checkbox array handling
@@ -110,7 +105,23 @@ class Schedule extends ClearOS_Controller
             }
         }
 
-        //////
+
+        // Load views
+        //-----------
+        $data['hour'] = $hour;
+ 
+        //$data[$params[$arrFields[0]]] = $params[$arrFields[0]]; 
+                
+     
+        $data['checkbox-day-mo'] = $params[$arrFields[1]];
+        $data['checkbox-day-tu'] = $params[$arrFields[2]];
+        $data['checkbox-day-we'] = $params[$arrFields[3]];
+        $data['checkbox-day-th'] = $params[$arrFields[4]];
+        $data['checkbox-day-fr'] = $params[$arrFields[5]];
+        $data['checkbox-day-sa'] = $params[$arrFields[6]];
+
+        $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));
+
 
     }
   

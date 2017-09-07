@@ -47,8 +47,52 @@ class Archives extends ClearOS_Controller
         // Load views
         //-----------
 
-        $this->page->view_form('archives', $data, lang('bmbackup_archives'));
+        $this->page->view_form('archives', $data, lang('bmbackup_archives'));                   // *** 
+
+
+        $testCh = array(
+            0 => 'checkbox-conf',
+            1 => 'checkbox-home',
+            2 => 'checkbox-flex',);
+
+        foreach($testCh as $field){
+        $params[$field] = filter_input(INPUT_POST, $field, FILTER_DEFAULT);
+        }
+
+        /*
+        $testC = array();
+        
+        //0 - Config, 2 - Home, 3 - Flex
+        //------------------------------
+        if($params[$testCh[0]] == 'on'){
+            $testC = array( 0 => 'on');
+        }
+        if($params[$testCh[1]] == 'on'){
+            $testC = array( 1 => 'on');
+        }
+        if($params[$testCh[2]] == 'on'){
+            $testC = array( 2 => 'on');
+        }
+        */
+
     }
+
+
+/*
+    if ($this->input->post('update_archives')) {
+        try {
+            $this->bmbackup->restore_backup(,,
+                $this->input->post('checkbox_conf'),
+                $this->input->post('checkbox_home'),
+                $this->input->post('checkbox_flex'),    
+                );
+                
+        } catch (Exception $e) {
+            $this->page->view_exception($e);
+            return;
+        }
+    }
+*/
 
     function restore($filename, $dev)
     {

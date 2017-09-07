@@ -71,6 +71,7 @@ if (!$storage_devices = $bmbackup->get_detected_devices()){
     exit();
 }
 
+//Counter for moving forward or backwards through the usb disks
 $i = count($storage_devices);
 $j = 0;
 
@@ -82,6 +83,8 @@ while ($i > 0) {
     $j = $j + 1;
 }
 
+
+
 // loop through USB disks and perform a backup
 foreach ($usb_disks as $dev) {
     if (!check_usb($dev)) {
@@ -90,6 +93,7 @@ foreach ($usb_disks as $dev) {
 
     $shell = new Shell;
 
+    // more error checking
     // get the names of previous backups on the device
     if (!$archives = get_backup_file_names($bmbackup::PATH_ARCHIVE)) {
         log_error("bmbackup warning: could not retrieve old backup file names");
@@ -106,6 +110,8 @@ foreach ($usb_disks as $dev) {
     }
 
     $archives = get_backup_file_names(PATH_ARCHIVE);
+
+
 
     $i = 0;
     while ($i < count($archives)) {
@@ -125,36 +131,38 @@ foreach ($usb_disks as $dev) {
         log_error("bmbackup warning: continuing over $dev since can't prepare backpup config ");
         continue;
     }
-
+    // >>>
     // backup config files
     if (! backup('Configuration_Backup', $config_manifest)) {
         umount_usb($dev);
         continue;
     }
-
-    // the old config backup should be deleted...
+    // Delete old Config File backup if the new backup was Sucessful
     if (isset($config_backup_file_name)) {
         $old_config_backup_file_name = new File (PATH_ARCHIVE . '/' . $config_backup_file_name);
         if ($old_config_backup_file_name->delete()) {
             log_error("bmbackup warning: the old config backup could not be deleted");
         }
     }
+    // <<<
     
+    // >>>
     // backup home directory
     if (! backup('Home_Directory_Backup', '/home/*')) {
         umount_usb($dev);
         continue;
     }
-
-    // after successful home backup, delete its old one
+    // Delete old Home Directory backup if the new backup was Sucessful
     if (isset($home_backup_file_name)) {
         $old_home_backup_file_name = new File(PATH_ARCHIVE . '/' . $home_backup_file_name);
         if ($old_home_backup_file_name->delete()) {
             log_error("bmbackup warning: the old home backup could not be deleted");
         }
     }
+    // <<<
 
-    // check to see if flexshares should be backed up...
+    // >>>
+    // check if flexshares should be backed up
     if (file_exists('/var/flexshare/shares')) {
         $folder = new Folder('/var/flexshare/shares');
         $are_files_available = $folder->get_listing();
@@ -166,8 +174,7 @@ foreach ($usb_disks as $dev) {
                 continue;
             }
         }
-
-        // after successful flexshare backup, delete the old one
+        // Delete old Flexshare backup if the new backup was Sucessful
         if (isset($flexshare_backup_file_name)) {
             $old_flexshare_backup = new File(PATH_ARCHIVE . '/' . $flexshare_backup_file_name);
             if ($old_flexshare_backup->delete()) {
@@ -175,6 +182,8 @@ foreach ($usb_disks as $dev) {
             }
         }
     }
+    // <<<
+
     
     // unmount the usb disk after all backups are successful.
     if (!umount_usb($dev)) {
