@@ -28,41 +28,26 @@ class Schedule extends ClearOS_Controller
         $this->lang->load('bmbackup');
         $this->load->library('base/File');
         $this->load->library('base/Shell');
+      
 
-
-        
-        // Load schedule setting
-        //----------------------
-
-        $shell = new Shell;
-        $file = new File(bmbackup::CRON_FILE, TRUE);
-        if (!$file->exists()) {
-            $hour = 24;
-        } else {
-            $hr = $file->get_contents(-1);
-            preg_match('/^\d+\s+(\d+).*$/', $hr, $matches);
-            $hour = $matches[1];
-
-            $dw = $file->get_contents(-4);
-            preg_match('/^\d+\s+\d+\s+\d+\s+\d+\s+(\d+).*$/', $dw, $matches);
-            $dow = $matches[1];                                // ***
-        }
-
-
-        
-
-        // Checkbox array handling
+        // Load View Data: Checkbox array handling
+        // View -> Controller
         //-----------
-        $arrFields = array('checkbox-day-su','checkbox-day-mo','checkbox-day-tu','checkbox-day-we','checkbox-day-th','checkbox-day-fr','checkbox-day-sa');
+
+        //*** v
+        $arrFields = array(
+            0 => 'checkbox-day-su',
+            1 => 'checkbox-day-mo',
+            2 => 'checkbox-day-tu',
+            3 => 'checkbox-day-we',
+            4 => 'checkbox-day-th',
+            5 => 'checkbox-day-fr',
+            6 => 'checkbox-day-sa');
 
         foreach($arrFields as $field){
         $params[$field] = filter_input(INPUT_POST, $field, FILTER_DEFAULT);
         }
-
-        //var_dump($params);                                // ***
-        //var_dump($arrFields);                             // ***
-        $DayName;
-        
+     
         if($params[$arrFields[0]] == 'on'){
             $DayName .= 'sun,';
         }
@@ -84,44 +69,58 @@ class Schedule extends ClearOS_Controller
         if($params[$arrFields[6]] == 'on'){
             $DayName .= 'sat,';
         }
-
-        //var_dump($DayName);
-
-        //print_r("Print for checkbox su");
-        //print_r($this->input->post('checkbox-day-su'));  
+        //*** ^
 
         // Handle form submit
         //-------------------
         if ($this->input->post('update_schedule')) {
             try {
                 $this->bmbackup->update_cron_tab(
-                    $this->input->post('drop-down-hour'), 
+                    $this->input->post('drop-down-hour'),
                     $DayName
                     );
-                
             } catch (Exception $e) {
                 $this->page->view_exception($e);
                 return;
             }
         }
 
+        // Load schedule setting
+        // Cron File -> Controller 
+        //----------------------
 
-        // Load views
+        $shell = new Shell;
+        $file = new File(bmbackup::CRON_FILE, TRUE);
+        if (!$file->exists()) {
+            $hour = 24;
+        } else {
+
+            $pattern1 = '/^\d+\s+(\d+).*$/';
+            $subject = $file->get_contents();
+            preg_match($pattern1, $subject, $matches);
+            $hour = $matches[1];
+
+            //Successfully Grabs results from cron file to load
+            $pattern2 = '#\b(sun|mon|tue|wed|thu|fri|sat)\b#'; 
+            preg_match_all($pattern2, $subject, $matches, PREG_PATTERN_ORDER);
+            $dow = $matches[1];
+
+        }
+
+        // Send Loaded information from Controller -> View.php
+        //   Loading views for the drop down menu and for the Checkbox's
+        // Dow and Hour are taken from Chron File then loaded into the 
+        //   matching Form call
         //-----------
         $data['hour'] = $hour;
- 
-        //$data[$params[$arrFields[0]]] = $params[$arrFields[0]]; 
-                
-     
-        $data['checkbox-day-mo'] = $params[$arrFields[1]];
-        $data['checkbox-day-tu'] = $params[$arrFields[2]];
-        $data['checkbox-day-we'] = $params[$arrFields[3]];
-        $data['checkbox-day-th'] = $params[$arrFields[4]];
-        $data['checkbox-day-fr'] = $params[$arrFields[5]];
-        $data['checkbox-day-sa'] = $params[$arrFields[6]];
 
-        $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));
+        for ($i=0; $i < 7; $i++) { 
+            $data[$dow[$i]] = TRUE;
+        }      
 
+        // Load Views
+        //-----------
+        $this->page->view_form('schedule', $data, lang('bmbackup_app_name'));     
 
     }
   

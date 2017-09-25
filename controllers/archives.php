@@ -21,14 +21,15 @@
 class Archives extends ClearOS_Controller
 {
     function index()
-    {
+    {   
+        
         // Load dependencies
-        //------------------
+        // ------------------
         $this->lang->load('bmbackup');
         $this->load->library('bmbackup/Bmbackup');
 
         // Load view data
-        // ----------------
+        // ---------------
         try {
             $devices = $this->bmbackup->get_detected_devices();
         } catch (Exception $e) {
@@ -46,53 +47,9 @@ class Archives extends ClearOS_Controller
         
         // Load views
         //-----------
-
-        $this->page->view_form('archives', $data, lang('bmbackup_archives'));                   // *** 
-
-
-        $testCh = array(
-            0 => 'checkbox-conf',
-            1 => 'checkbox-home',
-            2 => 'checkbox-flex',);
-
-        foreach($testCh as $field){
-        $params[$field] = filter_input(INPUT_POST, $field, FILTER_DEFAULT);
-        }
-
-        /*
-        $testC = array();
-        
-        //0 - Config, 2 - Home, 3 - Flex
-        //------------------------------
-        if($params[$testCh[0]] == 'on'){
-            $testC = array( 0 => 'on');
-        }
-        if($params[$testCh[1]] == 'on'){
-            $testC = array( 1 => 'on');
-        }
-        if($params[$testCh[2]] == 'on'){
-            $testC = array( 2 => 'on');
-        }
-        */
-
+        $this->page->view_form('archives', $data, lang('bmbackup_archives'));
     }
 
-
-/*
-    if ($this->input->post('update_archives')) {
-        try {
-            $this->bmbackup->restore_backup(,,
-                $this->input->post('checkbox_conf'),
-                $this->input->post('checkbox_home'),
-                $this->input->post('checkbox_flex'),    
-                );
-                
-        } catch (Exception $e) {
-            $this->page->view_exception($e);
-            return;
-        }
-    }
-*/
 
     function restore($filename, $dev)
     {
@@ -103,23 +60,22 @@ class Archives extends ClearOS_Controller
 
         $this->page->view_confirm(lang('bmbackup_confirm_restore') . '<br>' . $filename, $confirm_uri, $cancel_uri, $items);
     }
-    
-    /**
+   
+    /*
      * Calls the restore_backup function in the library to restore the specified file from device.
-     *
      * @param string $filename the name of the fle to restore from the backup device.
      * @param string $dev the name of the device to restore data from
-     *
      */
     function archive_restore($filename, $dev){
         $this->load->library('bmbackup/Bmbackup');
         
         try {
-            $this->bmbackup->restore_backup($filename, $dev);
+            $this->bmbackup->restore_backup($filename, $dev, $conf, $home, $flex);
             redirect('bmbackup');
         } catch (Exception $e) {
             $this->page->view_exception($e);
             return;
         }
     }
+
 }

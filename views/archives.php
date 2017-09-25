@@ -21,10 +21,9 @@ $this->lang->load('bmbackup');
 ///////////////////////////////////////////////////////////////////////////////
 // Items 
 ///////////////////////////////////////////////////////////////////////////////
-$items = array();
-
 // Handling for null/empty case
-$check_empty = array_values($archives);
+$items = array();
+$check_empty = array_values($archives);                                         
 if (empty($check_empty[0]))
 {
     $item = array(
@@ -38,9 +37,8 @@ if (empty($check_empty[0]))
 } else { 
     foreach ($archives as $archive => $info)
     {
-        $dev = substr($archive, 5);                                            //*** Is this needed?
+        $dev = substr($archive, 5);                                          
         $i = 0;
-
         while ($i < count($info))
         {
             $item = array(
@@ -56,64 +54,15 @@ if (empty($check_empty[0]))
     }
 }
 
-$buttons = array(
-    form_submit_custom('update_archives', lang('bmbackup_update_hour')),
-
-);
-
-
-
 ///////////////////////////////////////////////////////////////////////////////
 // Summary table
 ///////////////////////////////////////////////////////////////////////////////
 $options['sort'] = FALSE;
 
-         // *** 
-
-
-
 echo summary_table(
     lang('bmbackup_archives_restore'),
-    array(),                                                           // *** Contents Null? / other Summary
-    array('Archive Name'),
-    $items,
-    $options
-);
-
-/*
-$testCh = array(
-    0 => 'checkbox-conf',
-    1 => 'checkbox-home',
-    2 => 'checkbox-flex',
-    );
-*/
-
-/*
-echo summary_table(
-    lang('bmbackup_archives_backup'),
     array(),
     array('Archive Name'),
     $items,
     $options
 );
-*/
-
-
-echo form_open('bmbackup');
-echo form_header(lang('bmbackup_archives_backup'), array('id' => 'schedule_form'));
-
-// Checkbox (name,value,default setting)
-echo field_checkbox('checkbox_conf', $tempb[0], lang('bmbackup_conf'), FALSE);
-echo field_checkbox('checkbox_home', $tempb[1], lang('bmbackup_home'), FALSE);
-echo field_checkbox('checkbox_flex', $tempb[2], lang('bmbackup_flex'), FALSE);
-
-echo field_button_set($buttons);
-
-
-echo form_footer();
-echo form_close();
-
-
-//print_r("Test starts here: ");
-//var_dump($items);
-//var_dump($options);

@@ -242,7 +242,6 @@ class Bmbackup extends Engine
     }
 
 
-
     /**
      * Makes an entry in /etc/cron.d/ folder for bmbackup to run on a regular schedule
      *
@@ -254,13 +253,12 @@ class Bmbackup extends Engine
      * @access public
      * @return None
      */
-    function update_cron_tab($hour, $DayName)
+    function update_cron_tab($hour, $Dayname)
     {
-
 
         $cron = new Cron;
 
-
+        //Input handling for controller/schedule.php can be moved here
         //if Disabled
         if ($hour == 24) {
             if ($cron->exists_configlet(self::CRON_CONFIG_FILE_NAME)) {
@@ -273,16 +271,14 @@ class Bmbackup extends Engine
                 $hr = $file->get_contents(-1);  //Checking for conflicting contents in the cron file
                 $dw = $file->get_contents(-4);
 
-                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * $DayName root " . self::CRON_SCRIPT_PATH . "\n");              
+                $file->replace_lines('/^\d+\s+(\d+).*$/', "0 $hour * * $Dayname root " . self::CRON_SCRIPT_PATH . "\n");              
             
             } else {
-                $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', $DayName, 'root', self::CRON_SCRIPT_PATH);
-                
-               
+                $cron->add_configlet_by_parts(self::CRON_CONFIG_FILE_NAME, 0, $hour, '*', '*', $Dayname, 'root', self::CRON_SCRIPT_PATH);
+                            
             }
         }
     }
-
 
 
     /**
@@ -360,19 +356,11 @@ class Bmbackup extends Engine
     
      * 
      */
-
-    //function restore_backup($filename, $dev)
-    //{ 
-
-
-    //function restore_backup($filename, $dev, $checkbox_conf, $checkbox_home, $checkbox_flex)
-    //{
-
-
-    function restore_backup($filename, $dev, $checkbox_conf, $checkbox_home, $checkbox_flex)
+    function restore_backup($filename, $dev)
     {
         $shell = new Shell;
         $device = "/dev/" . $dev . "1";
+
         try {
             $shell->execute('/bin/mount', $device . " " . self::PATH_ARCHIVE, TRUE);
 
