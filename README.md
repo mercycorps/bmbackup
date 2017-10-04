@@ -1,4 +1,0 @@
-bmbackup
-========
-
-ClearOS Baremetal Backup
