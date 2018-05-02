@@ -486,7 +486,7 @@ class Bmbackup extends Engine
             //$proc_name = file_get_contents("$usb_storage/proc_name");
             $proc_name = stream_get_contents($fh, -1);
 
-            if (trim($proc_name) <> "usb-storage") {
+            if ((trim($proc_name) <> "usb-storage") && (trim($proc_name) <> "(null)")) {
                 clearos_log("bmbackup", "skipping because proc_name NON EQUAL TO 'usb-storage': " . $proc_name);
                 continue;
             }
